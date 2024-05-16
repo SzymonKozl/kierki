@@ -6,9 +6,7 @@
 #include "message.h"
 
 #include "mutex"
-#include "ctime"
 #include "chrono"
-#include "iomanip"
 
 Logger::Logger(std::ostream &ostream, bool dummy):
     output(ostream),

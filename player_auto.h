@@ -5,12 +5,12 @@
 #ifndef KIERKI_CLIENT_AUTO_H
 #define KIERKI_CLIENT_AUTO_H
 
-#include "client.h"
+#include "player.h"
 #include "strategy.h"
 
-class ClientAuto: Client {
+class PlayerAuto: public Player {
 public:
-    ClientAuto();
+    PlayerAuto();
 
     Card trickMsg(int trickNo, const Table& table) override;
     void takenMsg(Side side, const Table& cards) override;

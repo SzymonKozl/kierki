@@ -4,7 +4,7 @@
 
 
 #include "io_worker_mgr.h"
-#include "client_auto.h"
+#include "player_auto.h"
 #include "common_types.h"
 
 #include "iostream"
