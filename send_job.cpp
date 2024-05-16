@@ -105,3 +105,17 @@ SendJobWrong::SendJobWrong(int trick_no):
 std::string SendJobWrong::genMsg() const {
     return msg_prefix + std::to_string(trick_no) + "\r\n";
 }
+
+SendDealJob::SendDealJob(RoundType roundType, Side starting, const Hand &cards):
+        SendJob("DEAL", false),
+        roundType(roundType),
+        starting(starting),
+        cards(cards)
+{}
+
+std::string SendDealJob::genMsg() const {
+    std::string res = msg_prefix + std::to_string(roundType);
+    res += starting;
+    for (const Card& c: cards) res += c.toString();
+    return res + "\r\n";
+}

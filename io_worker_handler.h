@@ -11,7 +11,7 @@
 
 #include "functional"
 
-using IOWorkerIntroCb = std::function<void(Side)>;
+using IOWorkerIntroCb = std::function<void(Side, int)>;
 using IOWrokerTrickCb = std::function<void(int, Side, Card)>;
 using IOWorkerDisconnectCb = std::function<void(Side)>;
 

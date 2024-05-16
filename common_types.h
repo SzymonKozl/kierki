@@ -9,6 +9,7 @@
 
 #include "vector"
 #include "unordered_map"
+#include "tuple"
 
 enum Side {
     N = 'n',
@@ -18,12 +19,7 @@ enum Side {
     _SIDE_NULL = 0
 };
 
-using Hand = std::vector<Card>;
-using Table = std::vector<Card>;
-using game_scenario = std::vector<std::pair<int, std::unordered_map<Side, Hand>>>;
-
-#define IO_ERR_INTERNAL -11
-#define IO_ERR_EXTERNAL -12
+Side sides_[] = {N, S, W, E};
 
 enum RoundType {
     TRICK_PENALTY = 1,
@@ -35,4 +31,12 @@ enum RoundType {
     EVERYTHING = 7
 };
 
+
+using Hand = std::vector<Card>;
+using Table = std::vector<Card>;
+using table_state = std::unordered_map<Side, Hand>;
+using game_scenario = std::vector<std::tuple<RoundType, table_state, Side>>;
+
+#define IO_ERR_INTERNAL -11
+#define IO_ERR_EXTERNAL -12
 #endif //KIERKI_COMMON_TYPES_H

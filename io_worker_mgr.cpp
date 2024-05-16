@@ -61,7 +61,7 @@ void IOWorkerMgr::killAll() {
     }
 }
 
-void IOWorkerMgr::sendJob(SendJob &job, int ix) {
+void IOWorkerMgr::sendJob(SendJob job, int ix) {
     workers.at(ix).newJob(job);
     signal(ix);
 }

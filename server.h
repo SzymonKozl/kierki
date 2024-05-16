@@ -7,10 +7,14 @@
 
 #include "io_worker_mgr.h"
 #include "common_types.h"
+#include "game_rules.h"
 
 #include "unordered_map"
 #include "mutex"
 #include "string"
+
+using score_map = std::unordered_map<Side, int>;
+using active_map = std::unordered_map<Side, int>;
 
 class Server {
 public:
@@ -20,24 +24,28 @@ private:
     bool furtherMovesNeeded() noexcept;
     void handleSysErr(std::string call, int error, int type, Side side);
     void playerTricked(Side side, Card card);
-    void playerIntro(Side side);
+    void playerIntro(Side side, int workerIx);
     void prepareRound();
     void forwardConnection(int fd);
     void workerQuits(int status);
-    int makeTCPSock();
+    int makeTCPSock(uint16_t port);
+    void updatePenalties();
+    void clearTmpPenalties();
 
     game_scenario gameScenario;
     IOWorkerMgr workerMgr;
-    std::unordered_map<Side, bool> activeSides;
-    std::unordered_map<Side, Hand> hands;
-    std::unordered_map<Side, int> penalties;
+    active_map activeSides;
+    score_map penalties;
+    score_map penaltiesRound;
+    table_state hands;
     Side nextMove;
     int roundNumber;
-    int roundMode;
+    int trickNo;
+    RoundType roundMode;
     std::mutex gameStateMutex;
     Table table;
     bool exitFlag;
-    bool readyToPlay;
+    int playersConnected;
 };
 
 

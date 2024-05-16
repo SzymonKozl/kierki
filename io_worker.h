@@ -12,7 +12,7 @@
 #include "string"
 
 using IOWorkerExitCb = std::function<void(int)>;
-using IOWorkerSysErrCb = std::function<void(std::string, int, int)>;
+using IOWorkerSysErrCb = std::function<void(std::string, int, int, Side)>;
 
 class IOWorker {
 public:

@@ -21,7 +21,7 @@ protected:
     bool disconnectAfter;
 };
 
-class SendJobBusy: SendJob{
+class SendJobBusy: public SendJob{
 public:
     SendJobBusy(std::vector<Side> const& taken);
     std::string genMsg() const override;
@@ -29,7 +29,7 @@ private:
     const std::vector<Side> &taken;
 };
 
-class SendDealJob: SendJob {
+class SendDealJob: public SendJob {
 public:
     SendDealJob(RoundType roundType, Side starting, const Hand& cards);
     std::string genMsg() const override;
@@ -39,7 +39,7 @@ private:
     const Hand& cards;
 };
 
-class SendJobIntro: SendJob{
+class SendJobIntro: public SendJob{
 public:
     SendJobIntro(Side s);
     std::string genMsg() const override;
@@ -47,7 +47,7 @@ private:
     const Side s;
 };
 
-class SendJobScore : SendJob {
+class SendJobScore : public SendJob {
 public:
     SendJobScore(const std::unordered_map<Side, int> &scores);
 
@@ -56,7 +56,7 @@ private:
     const std::unordered_map<Side, int>& scores;
 };
 
-class SendJobTaken: SendJob {
+class SendJobTaken: public SendJob {
 public:
     SendJobTaken(Table const& cards, Side s, int trickNo);
     std::string genMsg() const override;
@@ -66,7 +66,7 @@ private:
     const Table& table;
 };
 
-class SendJobTotal: SendJob {
+class SendJobTotal: public SendJob {
 public:
     SendJobTotal(std::unordered_map<Side, int> scores);
     std::string genMsg() const override;
@@ -74,7 +74,7 @@ private:
     const std::unordered_map<Side, int> scores;
 };
 
-class SendJobTrick: SendJob{
+class SendJobTrick: public SendJob{
 public:
     SendJobTrick(Table const& table_state, int trickNo);
     std::string genMsg() const override;
@@ -83,26 +83,12 @@ private:
     const int trickNo;
 };
 
-class SendJobWrong: SendJob {
+class SendJobWrong: public SendJob {
 public:
     SendJobWrong(int trick_no);
     std::string genMsg() const override;
 private:
     int trick_no;
 };
-
-SendDealJob::SendDealJob(RoundType roundType, Side starting, const Hand &cards):
-        SendJob("DEAL", false),
-        roundType(roundType),
-        starting(starting),
-        cards(cards)
-{}
-
-std::string SendDealJob::genMsg() const {
-    std::string res = msg_prefix + std::to_string(roundType);
-    res += starting;
-    for (const Card& c: cards) res += c.toString();
-    return res + "\r\n";
-}
 
 #endif //KIERKI_SENDJOB_H

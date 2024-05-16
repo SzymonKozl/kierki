@@ -27,7 +27,7 @@ void IOWorkerConnect::pollAction() {
     socklen_t client_addr_s = sizeof client_addr;
     int new_fd = accept(main_fd, (sockaddr *) &client_addr, &client_addr_s);
     if (new_fd < 0) {
-        errCb("accept", errno, IO_ERR_EXTERNAL);
+        errCb("accept", errno, IO_ERR_EXTERNAL, _SIDE_NULL);
     }
     accCb(new_fd);
 }

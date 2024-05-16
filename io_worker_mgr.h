@@ -21,7 +21,7 @@ public:
     void spawnNewWorker(Args... args);
     void sendKill(int ix);
     void killAll();
-    void sendJob(SendJob &job, int ix);
+    void sendJob(SendJob job, int ix);
     void eraseWorker(int ix);
     IOWorkerMgr(IOWorkerMgrPipeCb &&pipeCb);
     ~IOWorkerMgr();
