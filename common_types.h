@@ -10,6 +10,7 @@
 #include "vector"
 #include "unordered_map"
 #include "tuple"
+#include "stdint.h"
 
 enum Side {
     N = 'n',
@@ -36,6 +37,7 @@ using Hand = std::vector<Card>;
 using Table = std::vector<Card>;
 using table_state = std::unordered_map<Side, Hand>;
 using game_scenario = std::vector<std::tuple<RoundType, table_state, Side>>;
+using net_address = std::pair<uint16_t, std::string>;
 
 #define IO_ERR_INTERNAL -11
 #define IO_ERR_EXTERNAL -12

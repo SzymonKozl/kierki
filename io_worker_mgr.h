@@ -17,7 +17,7 @@ using IOWorkerMgrPipeCb = std::function<void(std::string, int)>;
 
 class IOWorkerMgr {
 public:
-    template<class T, class... Args> requires std::is_base_of_v<IOWorker, T>
+    template<class T, class... Args> requires std::is_base_of_v<IOWorker, T> && std::is_constructible_v<T, int, int, Args...>
     void spawnNewWorker(Args... args);
     void sendKill(int ix);
     void killAll();

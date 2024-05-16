@@ -8,14 +8,15 @@
 #include "unistd.h"
 #include "sys/socket.h"
 #include "arpa/inet.h"
+#include "endian.h"
 
 IOWorkerConnect::IOWorkerConnect(
         int pipe_fd,
         int id,
         int sock_fd,
-        IOWorkerExitCb &exit_callback,
-        IOWorkerSysErrCb &error_callback,
-        IOWorkerConnectionMadeCb &accept_callback
+        IOWorkerExitCb exit_callback,
+        IOWorkerSysErrCb error_callback,
+        IOWorkerConnectionMadeCb accept_callback
         ):
         IOWorker(pipe_fd, id, sock_fd, exit_callback, error_callback),
         accCb(accept_callback)
@@ -29,5 +30,7 @@ void IOWorkerConnect::pollAction() {
     if (new_fd < 0) {
         errCb("accept", errno, IO_ERR_EXTERNAL, _SIDE_NULL);
     }
-    accCb(new_fd);
+    uint16_t port = be16toh(client_addr.sin_port);
+    std::string addr = inet_ntoa(client_addr.sin_addr);
+    accCb(new_fd, std::make_pair(port, addr));
 }

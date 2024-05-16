@@ -6,11 +6,12 @@
 #define KIERKI_IO_WORKER_CONNECT_H
 
 #include "io_worker.h"
+#include "common_types.h"
 
 #include "functional"
 
 
-using IOWorkerConnectionMadeCb = std::function<void(int)>;
+using IOWorkerConnectionMadeCb = std::function<void(int, net_address)>;
 
 class IOWorkerConnect: IOWorker {
 public:
@@ -18,9 +19,9 @@ public:
             int pipe_fd,
             int id,
             int sock_fd,
-            IOWorkerExitCb& exit_callback,
-            IOWorkerSysErrCb& error_callback,
-            IOWorkerConnectionMadeCb& accept_callback
+            IOWorkerExitCb exit_callback,
+            IOWorkerSysErrCb error_callback,
+            IOWorkerConnectionMadeCb accept_callback
             );
 private:
     void pollAction() override;

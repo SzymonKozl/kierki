@@ -8,6 +8,7 @@
 #include "io_worker.h"
 #include "common_types.h"
 #include "card.h"
+#include "logger.h"
 
 #include "functional"
 
@@ -21,21 +22,26 @@ public:
             int sock_fd,
             int id,
             int pipe_fd,
-            IOWorkerExitCb& exit_callback,
-            IOWorkerSysErrCb& error_callback,
-            IOWorkerIntroCb& intro_callback,
-            IOWrokerTrickCb& trick_callback,
-            IOWorkerDisconnectCb& disconnect_callback
+            IOWorkerExitCb exit_callback,
+            IOWorkerSysErrCb error_callback,
+            IOWorkerIntroCb intro_callback,
+            IOWrokerTrickCb trick_callback,
+            IOWorkerDisconnectCb disconnect_callback,
+            net_address client_addr,
+            net_address own_addr
             );
 private:
     void pollAction() override;
     void disconnectAction() override;
 
+    Logger logger;
     IOWorkerDisconnectCb disconnectCb;
     IOWrokerTrickCb trickCb;
     IOWorkerIntroCb introCb;
     Side client_loc;
     bool introduced;
+    net_address client_addr;
+    net_address own_addr;
 };
 
 

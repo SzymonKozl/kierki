@@ -4,6 +4,7 @@
 
 #include "server.h"
 #include "io_worker_connect.h"
+#include "io_worker_handler.h"
 #include "utils.h"
 #include "game_rules.h"
 #include "common_types.h"
@@ -13,6 +14,7 @@
 #include "iostream"
 #include "mutex"
 #include "stdexcept"
+#include "stdint.h"
 #include "sys/socket.h"
 #include "arpa/inet.h"
 
@@ -45,7 +47,7 @@ void Server::run() {
         tcp_listen_sock,
         [&](int status) { workerQuits(status);},
         [&](std::string s, int e, int t, Side side) { handleSysErr(s, e, t, side);},
-        [&](int fd) { forwardConnection(fd);}
+        [&](int fd, net_address conn_addr) { forwardConnection(fd, conn_addr);}
     );
     // todo job for main
 }
@@ -197,9 +199,33 @@ int Server::makeTCPSock(uint16_t port) {
         }
     }
 
+    sockaddr_in addr_server;
+    socklen_t socklen;
+
+    if (getsockname(fd, (sockaddr *) &addr_server, &socklen)) {
+        throw std::runtime_error("getsockname");
+    }
+
+    uint16_t s_port = addr_server.sin_port;
+    std::string s_addr = inet_ntoa(addr_server.sin_addr);
+    own_addr = std::make_pair(s_port, s_addr);
+
     if (listen(fd, 10)) {
         throw std::runtime_error("listen");
     }
 
     return fd;
+}
+
+void Server::forwardConnection(int fd, net_address conn_addr) {
+    std::lock_guard<std::mutex> lock(gameStateMutex);
+    workerMgr.spawnNewWorker<IOWorkerHandler>(
+            fd,
+            [&] (int ix) { workerQuits(ix);},
+            [&] (std::string s, int e, int type, Side side) { handleSysErr(s, e, type, side);},
+            [&] (Side s, int ix) { playerIntro(s, ix);},
+            [&] (int, Side s, Card c) { playerTricked(s, c);}, // todo: do not ignore trickNo
+            [&] (Side s) {/*todo*/},
+            conn_addr
+            );
 }

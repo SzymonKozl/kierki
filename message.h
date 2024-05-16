@@ -5,6 +5,8 @@
 #ifndef KIERKI_MESSAGE_H
 #define KIERKI_MESSAGE_H
 
+#include "common_types.h"
+
 #include "string"
 #include "chrono"
 
@@ -12,18 +14,15 @@
 class Message {
 public:
     Message(
-            std::string const& sender,
-            std::string const& receiver,
+            net_address const& sender,
+            net_address const& receiver,
             std::string const& payload
             );
-    const std::string& getSender() const noexcept;
-    const std::string& getReceiver() const noexcept;
-    const std::string& getPayload() const noexcept;
-    const std::time_t& getRegistered() const noexcept;
+    std::string toString();
 private:
     const std::time_t registered;
-    const std::string sender;
-    const std::string receiver;
+    const net_address sender;
+    const net_address receiver;
     const std::string payload;
 };
 

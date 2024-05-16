@@ -13,9 +13,10 @@
 
 class Logger {
 public:
-    Logger(std::ostream& ostream);
+    Logger(std::ostream& ostream, bool dummy);
     void log(Message m);
 private:
+    bool dummy;
     std::mutex mutex;
     std::ostream &output;
 };

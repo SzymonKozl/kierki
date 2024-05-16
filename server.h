@@ -26,11 +26,12 @@ private:
     void playerTricked(Side side, Card card);
     void playerIntro(Side side, int workerIx);
     void prepareRound();
-    void forwardConnection(int fd);
+    void forwardConnection(int fd, net_address conn_addr);
     void workerQuits(int status);
     int makeTCPSock(uint16_t port);
     void updatePenalties();
     void clearTmpPenalties();
+    void playerDisconnected(Side s);
 
     game_scenario gameScenario;
     IOWorkerMgr workerMgr;
@@ -46,6 +47,7 @@ private:
     Table table;
     bool exitFlag;
     int playersConnected;
+    net_address own_addr;
 };
 
 
