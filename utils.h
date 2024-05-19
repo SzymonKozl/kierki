@@ -27,4 +27,6 @@ net_address getAddrStruct(int fd);
 
 game_scenario parseScenario(const std::string& filepath);
 
+void ignoreBrokenPipe();
+
 #endif //KIERKI_UTILS_H
