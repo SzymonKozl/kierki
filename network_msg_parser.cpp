@@ -4,6 +4,7 @@
 
 
 #include "network_msg_parser.h"
+#include "game_rules.h"
 
 #include "string"
 #include "vector"
@@ -17,13 +18,13 @@
 constexpr std::string_view patterns[] = {
         "IAM" _SIDE,
         "BUSY" _SIDE "{1,4}",
-        "DEAL[1-7]" _SIDE _CARD "{8}",
+        "DEAL[1-7]" _SIDE _CARD "{13}",
         "TRICK" _RN _CARD "{0,3}",
         "TRICK" _RN _CARD,
         "WRONG" _RN,
         "TAKEN" _RN _CARD "{4}" _SIDE,
-        "SCORE" _RN "(" _SIDE "0|([1-9](0-9)*)){4}",
-        "TOTAL" _RN "(" _SIDE "0|([1-9](0-9)*)){4}"
+        "SCORE(" _SIDE "(0|([1-9][0-9]*))){4}",
+        "TOTAL(" _SIDE "(0|([1-9][0-9]*))){4}"
 };
 
 constexpr int PATTERN_NO = 9;
@@ -60,7 +61,7 @@ resp_array parse_msg(std::string msg, bool server_side) {
                     res.emplace_back("round_mode", msg.substr(4, 1));
                     res.emplace_back("side", msg.substr(5, 1));
                     itr = 6;
-                    for (int j = 0; j < 8; j ++){
+                    for (int j = 0; j < TRICKS_PER_ROUND; j ++){
                         std::string card;
                         if (msg.at(itr) == '1') {
                             card = msg.substr(itr, 3);
@@ -72,14 +73,16 @@ resp_array parse_msg(std::string msg, bool server_side) {
                     }
                     break;
                 case 3:
+                    itr = 7;
                     res.emplace_back("type", "TRICK_S");
                     if (msg.size() <= 7) {
                         res.emplace_back("rn", msg.substr(5));
                     }
                     else {
-                        char ind = msg.at(8);
+                        char ind = msg.at(7);
                         if (ind == 'C' || ind == 'H' || ind == 'D' || ind == 'S' || ind == '0') {
                             res.emplace_back("rn", msg.substr(5, 1));
+                            itr -= 1;
                         }
                         else res.emplace_back("rn", msg.substr(5, 2));
                     }
@@ -127,15 +130,7 @@ resp_array parse_msg(std::string msg, bool server_side) {
                     break;
                 case 7:
                     res.emplace_back("type", "SCORE");
-                    t = msg.at(7);
-                    if (t == 'C' || t == 'D' || t == 'H' || t == 'S' || t == '0') {
-                        res.emplace_back("rn", msg.substr(5, 1));
-                        itr = 6;
-                    }
-                    else {
-                        res.emplace_back("rn", msg.substr(5, 2));
-                        itr = 7;
-                    }
+                    itr = 5;
                     for (int j = 0; j < 4; j ++) {
                         res.emplace_back("side", msg.substr(itr ++, 1));
                         start = itr;
@@ -145,15 +140,7 @@ resp_array parse_msg(std::string msg, bool server_side) {
                     break;
                 case 8:
                     res.emplace_back("type", "TOTAL");
-                    t = msg.at(7);
-                    if (t == 'C' || t == 'D' || t == 'H' || t == 'S' || t == '0') {
-                        res.emplace_back("rn", msg.substr(5, 1));
-                        itr = 6;
-                    }
-                    else {
-                        res.emplace_back("rn", msg.substr(5, 2));
-                        itr = 7;
-                    }
+                    itr = 5;
                     for (int j = 0; j < 4; j ++) {
                         res.emplace_back("side", msg.substr(itr ++, 1));
                         start = itr;

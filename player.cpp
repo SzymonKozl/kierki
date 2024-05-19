@@ -4,4 +4,12 @@
 
 #include "player.h"
 
-Player::Player() {}
+#include <utility>
+
+Player::Player()
+{}
+
+void Player::setup(putCardCb putCardCallback, cardNeededCb cardNeededCallback) {
+    putCb = std::move(putCardCallback);
+    checkCardCb = std::move(cardNeededCallback);
+}

@@ -15,7 +15,7 @@ class JobQueue {
 public:
     JobQueue();
 
-    SendJob popNextJob();
+    SSendJob popNextJob();
 
     const bool hasNextJob() noexcept;
 
@@ -23,7 +23,7 @@ public:
 
     void setKillOrder() noexcept;
 
-    void pushNextJob(SendJob job);
+    void pushNextJob(SSendJob job);
 
     void setStopped(bool val) noexcept;
 
@@ -34,7 +34,7 @@ public:
 private:
     bool killFlag;
     bool stopped;
-    std::queue<SendJob> jobsPending;
+    std::queue<SSendJob> jobsPending;
     std::mutex mutex;
 };
 

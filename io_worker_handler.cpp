@@ -3,9 +3,12 @@
 //
 
 #include "io_worker_handler.h"
+
+#include <utility>
 #include "utils.h"
 #include "common_types.h"
 #include "network_msg_parser.h"
+#include "constants.h"
 
 #include "string"
 #include "stdexcept"
@@ -14,9 +17,9 @@
 #include "iostream"
 
 IOWorkerHandler::IOWorkerHandler(
-        int sock_fd,
         int pipe_fd,
         int id,
+        int sock_fd,
         IOWorkerExitCb exit_callback,
         IOWorkerSysErrCb error_callback,
         IOWorkerIntroCb intro_callback,
@@ -26,13 +29,13 @@ IOWorkerHandler::IOWorkerHandler(
         net_address own_addr
 ):
         IOWorker(pipe_fd, id, sock_fd, exit_callback, error_callback),
-        introCb(intro_callback),
-        trickCb(trick_callback),
-        disconnectCb(disconnect_callback),
-        client_loc(_SIDE_NULL),
+        introCb(std::move(intro_callback)),
+        trickCb(std::move(trick_callback)),
+        disconnectCb(std::move(disconnect_callback)),
+        client_loc(SIDE_NULL_),
         introduced(false),
-        client_addr(client_addr),
-        own_addr(own_addr),
+        client_addr(std::move(client_addr)),
+        own_addr(std::move(own_addr)),
         logger(std::cout, false)
         {}
 
@@ -41,16 +44,16 @@ void IOWorkerHandler::pollAction() {
     try {
         msg = readUntilRN(main_fd);
     } catch (std::runtime_error) {
-        // invalid message from client, disconnecting
+        // invalid message from Client, disconnecting
         if (close(main_fd)) {
-            errCb("close", errno, IO_ERR_INTERNAL, client_loc);
+            errCb("close", errno, IO_ERR_INTERNAL);
         }
         else exitCb(0);
         return;
     }
 
-    Message messageObj()
-    logger.log(msg);
+    Message messageObj(client_addr, own_addr, msg);
+    logger.log(messageObj);
 
     resp_array arr = parse_msg(msg, true);
     if (!arr.empty()) {
@@ -70,12 +73,12 @@ void IOWorkerHandler::pollAction() {
         }
     }
     if (close(main_fd)) {
-        errCb("close", errno, IO_ERR_EXTERNAL, client_loc);
+        errCb("close", errno, IO_ERR_EXTERNAL);
     }
     else exitCb(0);
     return;
 }
 
-void IOWorkerHandler::disconnectAction() {
-    disconnectCb(client_loc);
+void IOWorkerHandler::quitAction() {
+    disconnectCb(client_loc, err, errno, err_type);
 }

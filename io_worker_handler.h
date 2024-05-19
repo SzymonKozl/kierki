@@ -14,14 +14,14 @@
 
 using IOWorkerIntroCb = std::function<void(Side, int)>;
 using IOWrokerTrickCb = std::function<void(int, Side, Card)>;
-using IOWorkerDisconnectCb = std::function<void(Side)>;
+using IOWorkerDisconnectCb = std::function<void(Side, std::string, int, int)>;
 
-class IOWorkerHandler: IOWorker {
+class IOWorkerHandler: public IOWorker {
 public:
     IOWorkerHandler(
-            int sock_fd,
-            int id,
             int pipe_fd,
+            int id,
+            int sock_fd,
             IOWorkerExitCb exit_callback,
             IOWorkerSysErrCb error_callback,
             IOWorkerIntroCb intro_callback,
@@ -32,7 +32,7 @@ public:
             );
 private:
     void pollAction() override;
-    void disconnectAction() override;
+    void quitAction() override;
 
     Logger logger;
     IOWorkerDisconnectCb disconnectCb;

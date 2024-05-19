@@ -6,6 +6,7 @@
 #include "common_types.h"
 #include "utils.h"
 
+#include "iostream"
 #include "ctime"
 #include "sstream"
 #include "iomanip"
@@ -26,7 +27,7 @@ std::string Message::toString() {
     auto milliseconds = std::chrono::duration_cast<std::chrono::milliseconds>(tp.time_since_epoch()) % 1000;
     std::tm* tm_ptr = std::localtime(&tt);
     output << std::put_time(tm_ptr, "%Y-%m-%d %H:%M:%S");
-    output << '.' << std::setfill('0') << std::setw(3) << milliseconds.count() << std::endl;
-    output << "] " << payload << "\\r\\n";
+    output << '.' << std::setfill('0') << std::setw(3) << milliseconds.count();
+    output << "] " << payload << "\\r\\n\n";
     return output.str();
 }

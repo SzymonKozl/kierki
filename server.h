@@ -13,7 +13,6 @@
 #include "mutex"
 #include "string"
 
-using score_map = std::unordered_map<Side, int>;
 using active_map = std::unordered_map<Side, int>;
 
 class Server {
@@ -22,7 +21,7 @@ public:
     void run();
 private:
     bool furtherMovesNeeded() noexcept;
-    void handleSysErr(std::string call, int error, int type, Side side);
+    void handleSysErr(const std::string& call, int error, int type);
     void playerTricked(Side side, Card card);
     void playerIntro(Side side, int workerIx);
     void prepareRound();

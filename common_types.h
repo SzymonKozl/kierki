@@ -13,14 +13,14 @@
 #include "stdint.h"
 
 enum Side {
-    N = 'n',
-    S = 's',
-    W = 'w',
-    E = 'e',
-    _SIDE_NULL = 0
+    N = 'N',
+    E = 'E',
+    S = 'S',
+    W = 'W',
+    SIDE_NULL_ = 0
 };
 
-Side sides_[] = {N, S, W, E};
+#define sides_ {N, S, W, E}
 
 enum RoundType {
     TRICK_PENALTY = 1,
@@ -36,9 +36,7 @@ enum RoundType {
 using Hand = std::vector<Card>;
 using Table = std::vector<Card>;
 using table_state = std::unordered_map<Side, Hand>;
+using score_map = std::unordered_map<Side, int>;
 using game_scenario = std::vector<std::tuple<RoundType, table_state, Side>>;
 using net_address = std::pair<uint16_t, std::string>;
-
-#define IO_ERR_INTERNAL -11
-#define IO_ERR_EXTERNAL -12
 #endif //KIERKI_COMMON_TYPES_H

@@ -7,18 +7,19 @@
 
 #include "job_queue.h"
 #include "common_types.h"
+#include "memory"
 
 #include "functional"
 #include "string"
 
 using IOWorkerExitCb = std::function<void(int)>;
-using IOWorkerSysErrCb = std::function<void(std::string, int, int, Side)>;
+using IOWorkerSysErrCb = std::function<void(std::string, int, int)>;
 
 class IOWorker {
 public:
     void run();
 
-    void newJob(SendJob &job);
+    void newJob(SSendJob job);
 
     void scheduleDeath();
 
@@ -30,11 +31,10 @@ public:
             IOWorkerSysErrCb& error_callback
         );
 
-    virtual ~IOWorker();
-
 protected:
-    virtual void pollAction();
-    virtual void disconnectAction();
+    virtual void pollAction() = 0;
+    virtual void quitAction() = 0;
+    void informAboutError();
 
     int id;
     bool terminate;
@@ -43,7 +43,10 @@ protected:
     JobQueue jobQueue;
     IOWorkerExitCb& exitCb;
     IOWorkerSysErrCb& errCb;
+    std::string err;
+    int err_type;
 };
 
+using SIOWorker = std::shared_ptr<IOWorker>;
 
 #endif //KIERKI_IO_WORKER_H

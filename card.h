@@ -7,6 +7,7 @@
 
 #include "string"
 #include "vector"
+#include "memory"
 
 enum color {
     COLOR_C = 'C',
@@ -20,25 +21,28 @@ public:
     static Card fromString(const std::string &s);
     std::string toString() const;
     color getColor() const noexcept;
-    std::string& getValue() const;
-    Card() = delete;
-    static bool isValueOk(std::string v);
+    std::string getValue() const;
+    Card(const std::string& value, color col);
+    static bool isValueOk(const std::string& v);
 
-    bool operator<(const Card& other);
-    bool operator>(const Card& other);
-    bool operator>=(const Card& other);
-    bool operator<=(const Card& other);
-    bool operator==(const Card& other);
-    bool operator!=(const Card& other);
+    bool operator<(const Card& other) const;
+    bool operator>(const Card& other) const;
+    bool operator>=(const Card& other) const;
+    bool operator<=(const Card& other) const;
+    bool operator==(const Card& other) const;
+    bool operator!=(const Card& other) const;
 
     Card& operator=(Card const& other);
 
 private:
     static const std::vector<char> AVAILABLE_COLORS;
     static const std::vector<std::string> AVAILABLE_VALUES;
-    const color col;
-    const std::string value;
+    color col;
+    std::string value;
+    int true_val;
 };
+
+using sCard = std::shared_ptr<Card>;
 
 
 #endif //KIERKI_CARD_H

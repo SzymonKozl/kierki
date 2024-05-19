@@ -4,6 +4,8 @@
 
 #include "send_job.h"
 
+#include "iostream"
+
 SendJob::SendJob(std::string &&msg_prefix, bool disconnectAfter):
         disconnectAfter(disconnectAfter),
         msg_prefix(msg_prefix)
@@ -24,7 +26,7 @@ SendJobBusy::SendJobBusy(const std::vector<Side> &taken):
 
 std::string SendJobBusy::genMsg() const {
     std::string res = msg_prefix;
-    for (Side s: taken) res += s;
+    for (Side s: taken) res += (char) s;
     return res + "\r\n";
 }
 
@@ -35,7 +37,7 @@ SendJobIntro::SendJobIntro(Side s):
 
 std::string SendJobIntro::genMsg() const {
     std::string res = msg_prefix;
-    res += s;
+    res += (char) s;
     return res + "\r\n";
 }
 
@@ -47,7 +49,7 @@ SendJobScore::SendJobScore(const std::unordered_map<Side, int>& scores):
 std::string SendJobScore::genMsg() const {
     std::string res = msg_prefix;
     for (auto itr = scores.begin(); itr != scores.end(); itr ++) {
-        res += itr->first;
+        res += (char) itr->first;
         res += std::to_string(itr->second);
     }
     return res + "\r\n";
@@ -65,7 +67,7 @@ std::string SendJobTaken::genMsg() const {
     for (const Card& c: table) {
         res += c.toString();
     }
-    res += s;
+    res += (char) s;
     return res + "\r\n";
 }
 
@@ -77,22 +79,22 @@ SendJobTotal::SendJobTotal(std::unordered_map<Side, int> scores):
 std::string SendJobTotal::genMsg() const {
     std::string res = msg_prefix;
     for (auto itr = scores.begin(); itr != scores.end(); itr ++) {
-        res += itr->first;
+        res += (char) itr->first;
         res += std::to_string(itr->second);
     }
     return res + "\r\n";
 }
 
-SendJobTrick::SendJobTrick(const Table &table_state, int trickNo):
+SendJobTrick::SendJobTrick(const Table &table, int trickNo):
         SendJob("TRICK", false),
-        tableState(table_state),
+        tableState(table),
         trickNo(trickNo)
 {}
 
 std::string SendJobTrick::genMsg() const {
     std::string res = msg_prefix + std::to_string(trickNo);
     for (const Card& c: tableState) {
-        res = res + c.toString();
+        res += c.toString();
     }
     return res + "\r\n";
 }
@@ -115,7 +117,7 @@ SendDealJob::SendDealJob(RoundType roundType, Side starting, const Hand &cards):
 
 std::string SendDealJob::genMsg() const {
     std::string res = msg_prefix + std::to_string(roundType);
-    res += starting;
+    res += (char) starting;
     for (const Card& c: cards) res += c.toString();
     return res + "\r\n";
 }

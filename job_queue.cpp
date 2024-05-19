@@ -14,10 +14,10 @@ JobQueue::JobQueue():
     mutex()
 {}
 
-SendJob JobQueue::popNextJob() {
+SSendJob JobQueue::popNextJob() {
     std::lock_guard<std::mutex> lock(mutex);
     if (jobsPending.empty()) throw std::runtime_error("tried to pop from empty job queue");
-    SendJob job = jobsPending.front();
+    SSendJob job = jobsPending.front();
     jobsPending.pop();
     return job;
 }
@@ -27,7 +27,7 @@ bool JobQueue::hasKillOrder() noexcept {
     return killFlag;
 }
 
-void JobQueue::pushNextJob(SendJob job) {
+void JobQueue::pushNextJob(SSendJob job) {
     std::lock_guard<std::mutex> lock(mutex);
     jobsPending.push(job);
 }

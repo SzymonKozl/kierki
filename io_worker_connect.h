@@ -13,7 +13,7 @@
 
 using IOWorkerConnectionMadeCb = std::function<void(int, net_address)>;
 
-class IOWorkerConnect: IOWorker {
+class IOWorkerConnect: public IOWorker {
 public:
     IOWorkerConnect(
             int pipe_fd,
@@ -25,6 +25,7 @@ public:
             );
 private:
     void pollAction() override;
+    void quitAction() override;
 
     IOWorkerConnectionMadeCb accCb;
 };

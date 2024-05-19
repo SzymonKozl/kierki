@@ -9,14 +9,22 @@
 
 #include "unistd.h"
 #include "string"
+#include "arpa/inet.h"
+#include "sys/socket.h"
 
-int writen(int fd, void * buff, size_t n);
-int readn(int fd, void * buff, size_t n);
+size_t writeN(int fd, void * buff, size_t n);
+size_t readN(int fd, void * buff, size_t n);
 
-std::string formatAddr(net_address addr);
+std::string formatAddr(const net_address& addr);
 
 std::string readUntilRN(int fd);
 
 Side nxtSide(const Side& s);
+
+in_addr_t getIntAddr(std::string host);
+
+net_address getAddrStruct(int fd);
+
+game_scenario parseScenario(const std::string& filepath);
 
 #endif //KIERKI_UTILS_H

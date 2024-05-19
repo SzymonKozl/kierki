@@ -9,7 +9,11 @@
 
 #include "functional"
 
-using IOWorkerTrickClientCb = std::function<void(Table, )
+using IOWorkerTrickClientCb = std::function<void(Table)>;
+using IOWorkerWrongCb = std::function<void()>;
+using IOWorkerScoreCb = std::function<void(score_map, bool)>;
+using IOWorkerDealCb = std::function<void(Side, RoundType, Hand)>;
+using IOWorkerTakenCb = std::function<void(Hand, Side)>;
 
 class IOWorkerClient: IOWorker {
 public:
@@ -23,8 +27,13 @@ public:
             int pipe_fd,
             int id,
             int sock_fd,
-            IOWorkerExitCb& exit_callback,
-            IOWorkerSysErrCb& error_callback
+            IOWorkerExitCb exit_callback,
+            IOWorkerSysErrCb error_callback,
+            IOWorkerDealCb,
+            IOWorkerScoreCb,
+            IOWorkerTakenCb,
+            IOWorkerTrickClientCb,
+            IOWorkerWrongCb
     );
 
     ~IOWorkerClient();

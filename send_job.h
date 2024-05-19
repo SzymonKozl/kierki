@@ -9,10 +9,11 @@
 
 #include "string"
 #include "vector"
+#include "memory"
 
 class SendJob {
 public:
-    virtual std::string genMsg() const;
+    virtual std::string genMsg() const = 0;
     bool shouldDisconnectAfter() const noexcept;
     void setDisconnectAfter(bool val) noexcept;
 protected:
@@ -20,6 +21,8 @@ protected:
     const std::string msg_prefix;
     bool disconnectAfter;
 };
+
+using SSendJob = std::shared_ptr<SendJob>;
 
 class SendJobBusy: public SendJob{
 public:
@@ -36,7 +39,7 @@ public:
 private:
     const RoundType roundType;
     const Side starting;
-    const Hand& cards;
+    const Hand cards;
 };
 
 class SendJobIntro: public SendJob{
@@ -53,7 +56,7 @@ public:
 
     std::string genMsg() const override;
 private:
-    const std::unordered_map<Side, int>& scores;
+    const std::unordered_map<Side, int> scores;
 };
 
 class SendJobTaken: public SendJob {
@@ -63,7 +66,7 @@ public:
 private:
     const Side s;
     const int trickNo;
-    const Table& table;
+    const Table table;
 };
 
 class SendJobTotal: public SendJob {
@@ -76,10 +79,10 @@ private:
 
 class SendJobTrick: public SendJob{
 public:
-    SendJobTrick(Table const& table_state, int trickNo);
+    SendJobTrick(Table const& table, int trickNo);
     std::string genMsg() const override;
 private:
-    const Table& tableState;
+    const Table tableState;
     const int trickNo;
 };
 

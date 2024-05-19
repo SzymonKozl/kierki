@@ -8,19 +8,22 @@
 #include "utils.h"
 #include "game_rules.h"
 #include "common_types.h"
+#include "constants.h"
 
 #include "string"
+#include "memory"
 #include "functional"
 #include "iostream"
 #include "mutex"
 #include "stdexcept"
-#include "stdint.h"
+#include <cstdint>
+#include <utility>
 #include "sys/socket.h"
 #include "arpa/inet.h"
 
 Server::Server(game_scenario &&scenario):
     gameScenario(scenario),
-    workerMgr([&](std::string s, int e) { handleSysErr(s, e, IO_ERR_INTERNAL, Side::_SIDE_NULL);}),
+    workerMgr([&](const std::string& s, int e) { handleSysErr(s, e, IO_ERR_INTERNAL);}),
     activeSides(),
     hands(),
     penalties(),
@@ -43,20 +46,20 @@ Server::Server(game_scenario &&scenario):
 void Server::run() {
     prepareRound();
     int tcp_listen_sock = makeTCPSock(9009);
-    workerMgr.spawnNewWorker<IOWorkerConnect>(
+    int connector_ix = workerMgr.spawnNewWorker<IOWorkerConnect>(
         tcp_listen_sock,
-        [&](int status) { workerQuits(status);},
-        [&](std::string s, int e, int t, Side side) { handleSysErr(s, e, t, side);},
-        [&](int fd, net_address conn_addr) { forwardConnection(fd, conn_addr);}
+        (IOWorkerExitCb)[&](int status) { workerQuits(status);},
+        (IOWorkerSysErrCb) [&](const std::string& s, int e, int t) { handleSysErr(s, e, t);},
+        (IOWorkerConnectionMadeCb ) [&](int fd, net_address conn_addr) { forwardConnection(fd, std::move(conn_addr));}
     );
-    // todo job for main
+    workerMgr.joinThread(connector_ix);
 }
 
 bool Server::furtherMovesNeeded() noexcept {
     if (roundMode == 1 || roundMode == 6 || roundMode == 7) {
         bool emptied = true;
-        for (auto it = hands.begin(); it != hands.end(); it++) {
-            if (!it->second.empty()) {
+        for (auto & hand : hands) {
+            if (!hand.second.empty()) {
                 emptied = false;
                 break;
             }
@@ -66,22 +69,22 @@ bool Server::furtherMovesNeeded() noexcept {
     else {
         std::function<bool(const Card&)> filter;
         switch (roundMode) {
-            case 2:
+            case HEART_PENALTY:
                 filter = [](const Card& c) {return c.getColor() == COLOR_H;};
                 break;
-            case 3:
+            case QUEEN_PENALTY:
                 filter = [](const Card& c) {return c.getValue() == "Q";};
                 break;
-            case 4:
+            case KING_JACK_PENALTY:
                 filter = [](const Card& c) {return c.getValue() == "K" || c.getValue() == "J";};
                 break;
-            case 5:
+            case HEART_KING_PENALTY:
                 filter = [](const Card& c) {return c.getValue() == "K" and c.getColor() == COLOR_H;};
                 break;
         }
         bool found = false;
-        for (auto it = hands.begin(); it != hands.end(); it ++) {
-            for (const Card& c: it->second) {
+        for (auto & hand : hands) {
+            for (const Card& c: hand.second) {
                 if (filter(c)) {
                     found = true;
                     break;
@@ -92,7 +95,7 @@ bool Server::furtherMovesNeeded() noexcept {
     }
 }
 
-void Server::handleSysErr(std::string call, int error, int type, Side side) {
+void Server::handleSysErr(const std::string& call, int error, int type) {
     std::lock_guard<std::mutex> lock(gameStateMutex);
     std::cerr << "System error on " << call << " call! Error code: " << error << std::endl;
     exitFlag = true;
@@ -126,7 +129,8 @@ void Server::prepareRound() {
 void Server::playerTricked(Side side, Card card) {
     std::lock_guard<std::mutex> lock(gameStateMutex);
     if (nextMove != side || !GameRules::isMoveLegal(side, card, hands)) {
-        workerMgr.sendJob(*(new SendJobWrong(trickNo)), activeSides[side]);
+        workerMgr.sendJob(std::static_pointer_cast<SendJob>(std::make_shared<SendJobWrong>(trickNo)), activeSides[side]);
+        return;
     }
 
     table.push_back(card);
@@ -135,35 +139,38 @@ void Server::playerTricked(Side side, Card card) {
         auto [taker, penalty] = GameRules::whoTakes(nextMove, table, roundMode, trickNo);
         nextMove = taker;
         penaltiesRound[taker] += penalty;
-        SendJobTaken msgTaken(table, taker, trickNo);
+        SSendJob msgTaken = std::static_pointer_cast<SendJob>(std::make_shared<SendJobTaken>(table, taker, trickNo));
+        trickNo ++;
+        table.clear();
         for (Side s: sides_) workerMgr.sendJob(msgTaken, activeSides[s]);
-        if (hands[W].empty()) {
+        if (trickNo == TRICKS_PER_ROUND + 1) {
             updatePenalties();
-            SendJobScore msgScore(penaltiesRound);
-            SendJobTotal msgTotal(penalties);
+            SSendJob msgScore = std::static_pointer_cast<SendJob>(std::make_shared<SendJobScore>(penaltiesRound));
+            SSendJob msgTotal = std::static_pointer_cast<SendJob>(std::make_shared<SendJobTotal>(penalties));
             if (roundNumber == gameScenario.size() - 1) {
-                msgTotal.setDisconnectAfter(true);
+                msgTotal->setDisconnectAfter(true);
             }
             for (Side s: sides_) {
                 workerMgr.sendJob(msgScore, activeSides[s]);
                 workerMgr.sendJob(msgTotal, activeSides[s]);
             }
             clearTmpPenalties();
-        }
-        roundNumber ++;
-        if (roundNumber == gameScenario.size()) {
-            workerMgr.killAll();
-            // what now?
-            // todo
-            exit(0); // prob bad idea
-        }
-        prepareRound();
-        for (Side s: sides_) {
-            SendDealJob msgDeal(roundMode, nextMove, hands[s]);
-            workerMgr.sendJob(msgDeal, activeSides[s]);
+            roundNumber ++;
+            if (roundNumber == gameScenario.size()) {
+                sleep(2);
+                workerMgr.killAll();
+                // what now?
+                // todo
+                exit(0); // prob bad idea
+            }
+            prepareRound();
+            for (Side s: sides_) {
+                SSendJob msgDeal = std::static_pointer_cast<SendJob>(std::make_shared<SendDealJob>(roundMode, nextMove, hands[s]));
+                workerMgr.sendJob(msgDeal, activeSides[s]);
+            }
         }
     }
-    workerMgr.sendJob(*(new SendJobTrick(table, roundNumber)), activeSides[nextMove]);
+    workerMgr.sendJob(std::make_shared<SendJobTrick>(table, trickNo), activeSides[nextMove]);
 }
 
 void Server::playerIntro(Side side, int workerIx) {
@@ -174,41 +181,29 @@ void Server::playerIntro(Side side, int workerIx) {
         playersConnected ++;
         if (playersConnected == 4) {
             for (Side s: sides_) {
-                SendDealJob msgDeal(roundMode, nextMove, hands[s]);
+                SSendJob msgDeal = std::static_pointer_cast<SendJob>(std::make_shared<SendDealJob>(roundMode, nextMove, hands[s]));
                 workerMgr.sendJob(msgDeal, activeSides[s]);
             }
-            SendJobTrick msgTrick(table, trickNo);
-            workerMgr.sendJob(msgTrick, nextMove);
+            SSendJob msgTrick = std::static_pointer_cast<SendJob>(std::make_shared<SendJobTrick>(table, trickNo));
+            workerMgr.sendJob(msgTrick, activeSides[nextMove]);
         }
     }
 }
 
 int Server::makeTCPSock(uint16_t port) {
     // todo: ivp6 handling
-    int fd = socket(AF_INET, SOCK_DGRAM, 0);
+    int fd = socket(AF_INET, SOCK_STREAM, 0);
     if (fd < 0) {
         throw std::runtime_error("socket");
     }
     if (port) {
-        sockaddr_in server_address;
-        server_address.sin_family = AF_INET; // IPv4
-        server_address.sin_addr.s_addr = htonl(INADDR_ANY); // Listening on all interfaces.
-        server_address.sin_port = htons(port);
+        sockaddr_in server_address = {AF_INET, htons(port), htonl(INADDR_ANY)};
         if (bind(fd,(const sockaddr *) &server_address, sizeof server_address)) {
             throw std::runtime_error("bind");
         }
     }
 
-    sockaddr_in addr_server;
-    socklen_t socklen;
-
-    if (getsockname(fd, (sockaddr *) &addr_server, &socklen)) {
-        throw std::runtime_error("getsockname");
-    }
-
-    uint16_t s_port = addr_server.sin_port;
-    std::string s_addr = inet_ntoa(addr_server.sin_addr);
-    own_addr = std::make_pair(s_port, s_addr);
+    own_addr = getAddrStruct(fd);
 
     if (listen(fd, 10)) {
         throw std::runtime_error("listen");
@@ -222,10 +217,11 @@ void Server::forwardConnection(int fd, net_address conn_addr) {
     workerMgr.spawnNewWorker<IOWorkerHandler>(
             fd,
             [&] (int ix) { workerQuits(ix);},
-            [&] (std::string s, int e, int type, Side side) { handleSysErr(s, e, type, side);},
+            [&] (const std::string& s, int e, int type) { handleSysErr(s, e, type);},
             [&] (Side s, int ix) { playerIntro(s, ix);},
-            [&] (int, Side s, Card c) { playerTricked(s, c);}, // todo: do not ignore trickNo
-            [&] (Side s) {/*todo*/},
-            conn_addr
+            [&] (int, Side s, const Card& c) { playerTricked(s, c);}, // todo: do not ignore trickNo
+            [&] (Side s, std::string call, int err, int err_type) {/*todo*/},
+            conn_addr,
+            own_addr
             );
 }
