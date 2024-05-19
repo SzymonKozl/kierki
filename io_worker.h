@@ -13,7 +13,7 @@
 #include "string"
 
 using IOWorkerExitCb = std::function<void(int)>;
-using IOWorkerSysErrCb = std::function<void(std::string, int, int)>;
+using IOWorkerSysErrCb = std::function<void(errInfo info)>;
 
 class IOWorker {
 public:
@@ -22,6 +22,10 @@ public:
     void newJob(SSendJob job);
 
     void scheduleDeath();
+
+    void halt();
+
+    void unhalt();
 
     IOWorker(
             int pipe_fd,

@@ -17,7 +17,7 @@ public:
 
     SSendJob popNextJob();
 
-    const bool hasNextJob() noexcept;
+    bool hasNextJob() noexcept;
 
     bool hasKillOrder() noexcept;
 
@@ -29,11 +29,11 @@ public:
 
     bool isStopped() noexcept;
 
-    size_t jobCount();
+    size_t jobCount() noexcept;
 
 private:
     bool killFlag;
-    bool stopped;
+    bool halt;
     std::queue<SSendJob> jobsPending;
     std::mutex mutex;
 };

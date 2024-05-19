@@ -14,7 +14,7 @@
 
 using IOWorkerIntroCb = std::function<void(Side, int)>;
 using IOWrokerTrickCb = std::function<void(int, Side, Card)>;
-using IOWorkerDisconnectCb = std::function<void(Side, std::string, int, int)>;
+using IOWorkerDisconnectCb = std::function<void(Side, errInfo)>;
 
 class IOWorkerHandler: public IOWorker {
 public:

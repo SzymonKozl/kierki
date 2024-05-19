@@ -3,6 +3,8 @@
 //
 
 #include "io_worker_connect.h"
+
+#include <utility>
 #include "common_types.h"
 #include "constants.h"
 
@@ -20,7 +22,7 @@ IOWorkerConnect::IOWorkerConnect(
         IOWorkerConnectionMadeCb accept_callback
         ):
         IOWorker(pipe_fd, id, sock_fd, exit_callback, error_callback),
-        accCb(accept_callback)
+        accCb(std::move(accept_callback))
 {}
 
 
@@ -29,7 +31,8 @@ void IOWorkerConnect::pollAction() {
     socklen_t client_addr_s = sizeof client_addr;
     int new_fd = accept(main_fd, (sockaddr *) &client_addr, &client_addr_s);
     if (new_fd < 0) {
-        errCb("accept", errno, IO_ERR_EXTERNAL);
+        errCb({"accept", errno, IO_ERR_INTERNAL});
+        return;
     }
     uint16_t port = be16toh(client_addr.sin_port);
     std::string addr = inet_ntoa(client_addr.sin_addr);

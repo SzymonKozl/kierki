@@ -32,6 +32,12 @@ enum RoundType {
     EVERYTHING = 7
 };
 
+struct errInfo {
+    const std::string& call;
+    int errnoVal;
+    int errType;
+};
+
 
 using Hand = std::vector<Card>;
 using Table = std::vector<Card>;

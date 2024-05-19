@@ -29,26 +29,28 @@ IOWorkerHandler::IOWorkerHandler(
         net_address own_addr
 ):
         IOWorker(pipe_fd, id, sock_fd, exit_callback, error_callback),
-        introCb(std::move(intro_callback)),
-        trickCb(std::move(trick_callback)),
+        logger(std::cout, false),
         disconnectCb(std::move(disconnect_callback)),
+        trickCb(std::move(trick_callback)),
+        introCb(std::move(intro_callback)),
         client_loc(SIDE_NULL_),
         introduced(false),
         client_addr(std::move(client_addr)),
-        own_addr(std::move(own_addr)),
-        logger(std::cout, false)
+        own_addr(std::move(own_addr))
         {}
 
 void IOWorkerHandler::pollAction() {
     std::string msg;
     try {
         msg = readUntilRN(main_fd);
-    } catch (std::runtime_error) {
+    } catch (std::runtime_error &e) {
         // invalid message from Client, disconnecting
+        int errno_cpy = errno;
         if (close(main_fd)) {
-            errCb("close", errno, IO_ERR_INTERNAL);
+            errCb({"close", errno, IO_ERR_EXTERNAL});
         }
-        else exitCb(0);
+        if (introduced) disconnectCb(client_loc, {"pipe", errno_cpy, IO_ERR_EXTERNAL});
+        exitCb(id);
         return;
     }
 
@@ -73,12 +75,12 @@ void IOWorkerHandler::pollAction() {
         }
     }
     if (close(main_fd)) {
-        errCb("close", errno, IO_ERR_EXTERNAL);
+        errCb({"close", errno, IO_ERR_EXTERNAL});
     }
-    else exitCb(0);
-    return;
+    if (introduced) disconnectCb(client_loc, {"", 0, IO_ERR_NOERR});
+    exitCb(id);
 }
 
 void IOWorkerHandler::quitAction() {
-    disconnectCb(client_loc, err, errno, err_type);
+    if (introduced) disconnectCb(client_loc, {err, errno, err_type});
 }

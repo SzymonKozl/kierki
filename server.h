@@ -17,12 +17,12 @@ using active_map = std::unordered_map<Side, int>;
 
 class Server {
 public:
-    Server(game_scenario &&scenario);
+    explicit Server(game_scenario &&scenario);
     void run();
 private:
     bool furtherMovesNeeded() noexcept;
-    void handleSysErr(const std::string& call, int error, int type);
-    void playerTricked(Side side, Card card);
+    void handleSysErr(errInfo info);
+    void playerTricked(Side side, Card card, int trickNoArg);
     void playerIntro(Side side, int workerIx);
     void prepareRound();
     void forwardConnection(int fd, net_address conn_addr);
@@ -30,7 +30,7 @@ private:
     int makeTCPSock(uint16_t port);
     void updatePenalties();
     void clearTmpPenalties();
-    void playerDisconnected(Side s);
+    void playerDisconnected(Side s, errInfo info);
 
     game_scenario gameScenario;
     IOWorkerMgr workerMgr;
@@ -39,14 +39,16 @@ private:
     score_map penaltiesRound;
     table_state hands;
     Side nextMove;
-    int roundNumber;
-    int trickNo;
+    size_t roundNumber;
+    size_t trickNo;
     RoundType roundMode;
     std::mutex gameStateMutex;
     Table table;
     bool exitFlag;
     int playersConnected;
     net_address own_addr;
+    SSendJob lastDeal;
+    std::vector<SSendJob> takenInRound;
 };
 
 

@@ -6,15 +6,16 @@
 #define KIERKI_IO_WORKER_MGR_H
 
 #include "io_worker.h"
-#include "unordered_map"
+#include "constants.h"
 
+#include "unordered_map"
 #include "concepts"
 #include "functional"
 #include "string"
 #include "thread"
 #include "memory"
 
-using IOWorkerMgrPipeCb = std::function<void(std::string, int)>;
+using IOWorkerMgrPipeCb = std::function<void(errInfo)>;
 
 class IOWorkerMgr {
 public:
@@ -25,6 +26,8 @@ public:
     void sendJob(SSendJob job, int ix);
     void eraseWorker(int ix);
     void joinThread(int ix);
+    void halt();
+    void unhalt();
     explicit IOWorkerMgr(IOWorkerMgrPipeCb &&pipeCb);
     ~IOWorkerMgr();
 private:
@@ -44,13 +47,13 @@ int IOWorkerMgr::spawnNewWorker(Args ...args) {
     int pipe_fd[2];
     int ret = pipe(pipe_fd);
     if (ret < 0) {
-        pipeCb("pipe", errno);
+        pipeCb({"pipe", errno, IO_ERR_INTERNAL});
     }
 
-    pipes.insert(std::make_pair(ix, std::make_pair(pipe_fd[1], pipe_fd[0])));
-    workers.insert(std::make_pair(ix, std::static_pointer_cast<IOWorker>(std::make_shared<T>(pipe_fd[0], ix, args...))));
+    pipes.emplace(ix, std::make_pair(pipe_fd[1], pipe_fd[0]));
+    workers.emplace(ix, std::static_pointer_cast<IOWorker>(std::make_shared<T>(pipe_fd[0], ix, args...)));
 
-    threads.insert(std::make_pair(ix, std::jthread([&]() { workers.at(ix)->run(); })));
+    threads.emplace(ix, std::jthread([&]() { workers.at(ix)->run(); }));
     return ix;
 }
 

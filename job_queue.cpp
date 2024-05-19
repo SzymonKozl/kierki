@@ -32,7 +32,7 @@ void JobQueue::pushNextJob(SSendJob job) {
     jobsPending.push(job);
 }
 
-const bool JobQueue::hasNextJob() noexcept {
+bool JobQueue::hasNextJob() noexcept {
     std::lock_guard<std::mutex> lock(mutex);
     return !jobsPending.empty();
 }
@@ -42,7 +42,15 @@ void JobQueue::setKillOrder() noexcept {
     killFlag = true;
 }
 
-size_t JobQueue::jobCount() {
+size_t JobQueue::jobCount() noexcept {
     std::lock_guard<std::mutex> lock(mutex);
     return jobsPending.size();
+}
+
+void JobQueue::setStopped(bool val) noexcept {
+    halt = val;
+}
+
+bool JobQueue::isStopped() noexcept {
+    return halt;
 }

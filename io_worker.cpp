@@ -3,6 +3,8 @@
 //
 
 #include "io_worker.h"
+
+#include <utility>
 #include "common_types.h"
 #include "utils.h"
 #include "constants.h"
@@ -18,19 +20,19 @@ IOWorker::IOWorker(
         IOWorkerExitCb& exit_callback,
         IOWorkerSysErrCb& error_callback
         ) :
+    id(id),
+    terminate(false),
     main_fd(sock_fd),
     pipe_fd(pipe_fd),
     jobQueue(),
     exitCb(exit_callback),
     errCb(error_callback),
-    terminate(false),
-    id(id),
     err(),
     err_type(IO_ERR_NOERR)
 {}
 
 void IOWorker::newJob(SSendJob job) {
-    jobQueue.pushNextJob(job);
+    jobQueue.pushNextJob(std::move(job));
 }
 
 void IOWorker::scheduleDeath() {
@@ -38,16 +40,16 @@ void IOWorker::scheduleDeath() {
 }
 
 void IOWorker::run() {
-    pollfd pollfds[2];
-    pollfds[0].fd = main_fd;
-    pollfds[0].events = POLLIN;
-    pollfds[1].fd = pipe_fd;
-    pollfds[1].events = POLLIN;
+    pollfd poll_fds[2];
+    poll_fds[0].fd = main_fd;
+    poll_fds[0].events = POLLIN;
+    poll_fds[1].fd = pipe_fd;
+    poll_fds[1].events = POLLIN;
 
     while (!terminate) {
-        pollfds[0].revents = 0;
-        pollfds[1].revents = 0;
-        int poll_out = poll(pollfds, 2, 1000);
+        poll_fds[0].revents = 0;
+        poll_fds[1].revents = 0;
+        int poll_out = poll(poll_fds, 2, 1000);
         if (poll_out == 0) continue;
         if (poll_out < 0) {
             err = "poll";
@@ -57,9 +59,9 @@ void IOWorker::run() {
             continue;
         }
         else {
-            if (pollfds[1].revents & POLLIN) {
+            if (poll_fds[1].revents & POLLIN) {
                 char msg;
-                int read_len = read(pipe_fd, &msg, 1);
+                ssize_t read_len = read(pipe_fd, &msg, 1);
                 if (read_len < 0) {
                     err = "read";
                     err_type = IO_ERR_INTERNAL;
@@ -74,7 +76,7 @@ void IOWorker::run() {
                     }
                     SSendJob sJob = jobQueue.popNextJob();
                     std::string payload = sJob->genMsg();
-                    int sent_len = writeN(main_fd, (void *) payload.c_str(), payload.size());
+                    ssize_t sent_len = writeN(main_fd, (void *) payload.c_str(), payload.size());
                     if (sent_len < 0) {
                         err = "write";
                         err_type = IO_ERR_EXTERNAL;
@@ -83,16 +85,16 @@ void IOWorker::run() {
                     }
                 }
             }
-            else if (pollfds[1].revents & (POLLERR | POLLHUP | POLLNVAL)) {
+            else if (poll_fds[1].revents & (POLLERR | POLLHUP | POLLNVAL)) {
                 err = "pipe";
                 err_type = IO_ERR_INTERNAL;
                 informAboutError();
                 terminate = true;
             }
-            else if (pollfds[0].revents & POLLIN) {
+            else if (poll_fds[0].revents & POLLIN) {
                 pollAction();
             }
-            else if (pollfds[0].revents & (POLLERR | POLLHUP | POLLNVAL)) {
+            else if (poll_fds[0].revents & (POLLERR | POLLHUP | POLLNVAL)) {
                 err = "socket";
                 err_type = IO_ERR_EXTERNAL;
                 informAboutError();
@@ -101,9 +103,17 @@ void IOWorker::run() {
         }
     }
     quitAction();
-    exitCb(0);
+    exitCb(id);
 }
 
 void IOWorker::informAboutError() {
-    errCb(err, errno, err_type);
+    errCb({err, errno, err_type});
+}
+
+void IOWorker::halt() {
+    jobQueue.setStopped(true);
+}
+
+void IOWorker::unhalt() {
+    jobQueue.setStopped(false);
 }
