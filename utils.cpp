@@ -14,6 +14,7 @@
 #include "netdb.h"
 #include "stdexcept"
 #include "cstring"
+#include "csignal"
 
 size_t writeN(int fd, void * buff, size_t n) {
     size_t written = 0;
@@ -144,4 +145,8 @@ Side nxtSide(const Side &s) {
             throw std::runtime_error("invalid side for nxtSide: SIDE_NULL_");
     }
     return N;
+}
+
+void ignoreBrokenPipe() {
+    signal(SIGPIPE, SIG_IGN);
 }

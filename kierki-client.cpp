@@ -3,7 +3,7 @@
 //
 
 
-#include "io_worker_mgr.h"
+#include "utils.h"
 #include "player_auto.h"
 #include "common_types.h"
 #include "client.h"
@@ -12,6 +12,7 @@
 #include "iostream"
 
 int main(int argc, char* argv[]) {
+    ignoreBrokenPipe();
     PlayerAuto player;
     Side s = W;
     if (argc == 2) {

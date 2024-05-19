@@ -8,6 +8,7 @@
 #include "unordered_map"
 
 int main() {
+    ignoreBrokenPipe();
     Server server(parseScenario("/home/szymon/CLionProjects/kierki/scenarios/simple.scn"));
     server.run();
 }
