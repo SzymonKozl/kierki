@@ -4,14 +4,14 @@
 
 #include "client.h"
 
-#include <memory>
-#include <utility>
 #include "player.h"
 #include "utils.h"
 #include "message.h"
 #include "network_msg_parser.h"
 #include "send_job.h"
 
+#include "memory"
+#include "utility"
 #include "stdexcept"
 #include "iostream"
 #include "algorithm"
@@ -20,8 +20,19 @@
 #include "poll.h"
 #include "fcntl.h"
 #include "arpa/inet.h"
+#include "random"
 
 constexpr char MSG_SEP = '\r';
+
+static std::random_device rd; // obtain a random number from hardware
+static std::mt19937 gen(rd()); // seed the generator
+static std::uniform_int_distribution<> distr(0, 50); // define the range
+void _randomDisconnect(int fd) {
+    if (distr(gen)) {
+        close(fd);
+        exit(0);
+    }
+}
 
 void Client::run() {
     fcntl(0, F_SETFL, fcntl(0, F_GETFL) | O_NONBLOCK);
@@ -40,8 +51,12 @@ void Client::run() {
         throw std::runtime_error("connect");
     }
 
+    _randomDisconnect(tcp_sock);
+
     SSendJob msgIam = std::static_pointer_cast<SendJob>(std::make_shared<SendJobIntro>(side));
     sendMessage(msgIam);
+
+    _randomDisconnect(tcp_sock);
 
     pollfd poll_fds[] {
             {tcp_sock, POLLIN, 0},
@@ -83,12 +98,14 @@ void Client::run() {
                 player.anyMsg(msgObj);
                 resp_array msg_array = parse_msg(msg, false);
                 if (msg_array[0].second == "DEAL") {
+                    _randomDisconnect(tcp_sock);
                     auto type = (RoundType) (msg_array[1].second.at(0) - '0');
                     Hand hand;
                     for (int i = 3; i < 16; i ++) hand.push_back(Card::fromString(msg_array[i].second));
                     player.dealMsg(type, hand);
                 }
                 else if (msg_array[0].second == "TRICK_S") {
+                    _randomDisconnect(tcp_sock);
                     waitingForCard = true;
                     trickNo = atoi(msg_array[1].second.c_str());
                     Table  t;
@@ -98,12 +115,14 @@ void Client::run() {
                     player.trickMsg(trickNo, t);
                 }
                 else if (msg_array[0].second == "TAKEN") {
+                    _randomDisconnect(tcp_sock);
                     Side s = (Side) msg_array[1].second.at(0);
                     Table t;
                     for (int i = 2 ; i < 6; i++) t.push_back(Card::fromString(msg_array[i].second));
                     player.takenMsg(s, t);
                 }
                 else if (msg_array[0].second == "score" || msg_array[0].second == "total") {
+                    _randomDisconnect(tcp_sock);
                     bool total = msg_array[0].second == "TOTAL";
                     score_map res;
                     for (int i = 1; i <= 4; i ++) {
@@ -114,6 +133,7 @@ void Client::run() {
                     player.scoreMsg(res, total);
                 }
                 else if (msg_array[0].second == "WRONG") {
+                    _randomDisconnect(tcp_sock);
                     trickNo = atoi(msg_array[1].second.c_str());
                     player.wrongMsg(trickNo);
                 }
