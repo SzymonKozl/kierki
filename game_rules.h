@@ -14,7 +14,7 @@ constexpr int TRICKS_PER_ROUND = 13;
 
 class GameRules {
 public:
-    static bool isMoveLegal(Side &s, Card &c, table_state &state);
+    static bool isMoveLegal(Side &s, Card &c, table_state &state, const Table& table);
 
     static std::pair<Side, int> whoTakes(Side const& starting_side, Table const& table, RoundType roundType, int trickNo);
 };
