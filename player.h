@@ -19,7 +19,7 @@ public:
     Player();
     void setup(putCardCb putCardCallback, cardNeededCb cardNeededCallback);
     virtual void trickMsg(int trickNo, const Table& table) = 0;
-    virtual void takenMsg(Side side, const Table& cards) = 0;
+    virtual void takenMsg(Side side, const Table& cards, bool apply) = 0;
     virtual void scoreMsg(const score_map scores, bool total) = 0;
     virtual void dealMsg(int trickMode, Hand hand) = 0;
     virtual void wrongMsg(int trickNo) = 0;

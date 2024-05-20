@@ -25,7 +25,9 @@ constexpr char MSG_SEP = '\r';
 
 enum GameStage {
     PRE,
-    TRICKS,
+    AFTER_FIRST_DEAL,
+    AFTER_DEAL,
+    AFTER_TRICK,
     AFTER_SCORE,
     AFTER_TOTAL
 };
@@ -101,13 +103,14 @@ void Client::run() {
                 player.anyMsg(msgObj);
                 resp_array msg_array = parse_msg(msg, false);
                 if (msg_array[0].second == "DEAL") {
-                    stage = TRICKS;
+                    stage = (stage == PRE) ? AFTER_FIRST_DEAL : AFTER_DEAL;
                     auto type = (RoundType) (msg_array[1].second.at(0) - '0');
                     Hand hand;
                     for (int i = 3; i < 16; i ++) hand.push_back(Card::fromString(msg_array[i].second));
                     player.dealMsg(type, hand);
                 }
                 else if (msg_array[0].second == "TRICK_S") {
+                    stage = AFTER_TRICK;
                     waitingForCard = true;
                     trickNo = atoi(msg_array[1].second.c_str());
                     Table  t;
@@ -120,7 +123,7 @@ void Client::run() {
                     Side s = (Side) msg_array[1].second.at(0);
                     Table t;
                     for (int i = 2 ; i < 6; i++) t.push_back(Card::fromString(msg_array[i].second));
-                    player.takenMsg(s, t);
+                    player.takenMsg(s, t, stage == AFTER_FIRST_DEAL);
                 }
                 else if (msg_array[0].second == "SCORE" || msg_array[0].second == "TOTAL") {
                     if (msg_array[0].second == "SCORE" ) stage = AFTER_SCORE;

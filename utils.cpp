@@ -150,3 +150,14 @@ Side nxtSide(const Side &s) {
 void ignoreBrokenPipe() {
     signal(SIGPIPE, SIG_IGN);
 }
+
+void rmIntersection(Hand& hand, const Table& table) {
+    for (const Card& ct: table) {
+        for (auto it = hand.begin(); it != hand.end(); it ++) {
+            if (it->getColor() == ct.getColor() && it->getValue() == ct.getValue()) {
+                hand.erase(it);
+                break;
+            }
+        }
+    }
+}

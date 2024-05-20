@@ -29,4 +29,6 @@ game_scenario parseScenario(const std::string& filepath);
 
 void ignoreBrokenPipe();
 
+void rmIntersection(Hand& hand, const Table& table);
+
 #endif //KIERKI_UTILS_H

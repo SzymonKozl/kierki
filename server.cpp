@@ -212,11 +212,9 @@ void Server::playerDisconnected(Side s, errInfo info) {
     if (info.errType != IO_ERR_NOERR) {
         handleSysErr(info);
     }
-    else if (info.errType == IO_ERR_EXTERNAL) {
-        MutexGuard lock(gameStateMutex);
-        activeSides[s] = -1;
-        playersConnected -= 1;
-    }
+    MutexGuard lock(gameStateMutex);
+    activeSides[s] = -1;
+    playersConnected -= 1;
 }
 
 int Server::makeTCPSock(uint16_t port) {
