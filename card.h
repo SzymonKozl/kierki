@@ -37,8 +37,8 @@ public:
 private:
     static const std::vector<char> AVAILABLE_COLORS;
     static const std::vector<std::string> AVAILABLE_VALUES;
-    color col;
     std::string value;
+    color col;
     int true_val;
 };
 

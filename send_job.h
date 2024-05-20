@@ -18,8 +18,8 @@ public:
     void setDisconnectAfter(bool val) noexcept;
 protected:
     SendJob(std::string &&msg_prefix, bool disconnectAfter);
-    const std::string msg_prefix;
     bool disconnectAfter;
+    const std::string msg_prefix;
 };
 
 using SSendJob = std::shared_ptr<SendJob>;

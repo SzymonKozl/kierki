@@ -31,8 +31,8 @@ public:
             int pipe_fd,
             int id,
             int sock_fd,
-            IOWorkerExitCb& exit_callback,
-            IOWorkerSysErrCb& error_callback
+            IOWorkerExitCb exit_callback,
+            IOWorkerSysErrCb error_callback
         );
 
 protected:
@@ -45,8 +45,8 @@ protected:
     const int main_fd;
     const int pipe_fd;
     JobQueue jobQueue;
-    IOWorkerExitCb& exitCb;
-    IOWorkerSysErrCb& errCb;
+    IOWorkerExitCb exitCb;
+    IOWorkerSysErrCb errCb;
     std::string err;
     int err_type;
 };

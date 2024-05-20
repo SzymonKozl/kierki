@@ -10,7 +10,8 @@
 #include "vector"
 #include "unordered_map"
 #include "tuple"
-#include "stdint.h"
+#include "cstdint"
+#include "mutex"
 
 enum Side {
     N = 'N',
@@ -38,6 +39,7 @@ struct errInfo {
     int errType;
 };
 
+using MutexGuard = std::lock_guard<std::mutex>;
 
 using Hand = std::vector<Card>;
 using Table = std::vector<Card>;

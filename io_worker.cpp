@@ -17,16 +17,16 @@ IOWorker::IOWorker(
         int pipe_fd,
         int id,
         int sock_fd,
-        IOWorkerExitCb& exit_callback,
-        IOWorkerSysErrCb& error_callback
+        IOWorkerExitCb exit_callback,
+        IOWorkerSysErrCb error_callback
         ) :
     id(id),
     terminate(false),
     main_fd(sock_fd),
     pipe_fd(pipe_fd),
     jobQueue(),
-    exitCb(exit_callback),
-    errCb(error_callback),
+    exitCb(std::move(exit_callback)),
+    errCb(std::move(error_callback)),
     err(),
     err_type(IO_ERR_NOERR)
 {}
@@ -70,18 +70,20 @@ void IOWorker::run() {
                 }
                 else {
                     // new job or exit order
+                    while (jobQueue.hasNextJob()) {
+                        SSendJob sJob = jobQueue.popNextJob();
+                        std::string payload = sJob->genMsg();
+                        ssize_t sent_len = writeN(main_fd, (void *) payload.c_str(), payload.size());
+                        if (sent_len < 0) {
+                            err = "write";
+                            err_type = IO_ERR_EXTERNAL;
+                            informAboutError();
+                            terminate = true;
+                        }
+                    }
                     if (jobQueue.hasKillOrder()) {
                         terminate = true;
-                        continue;
-                    }
-                    SSendJob sJob = jobQueue.popNextJob();
-                    std::string payload = sJob->genMsg();
-                    ssize_t sent_len = writeN(main_fd, (void *) payload.c_str(), payload.size());
-                    if (sent_len < 0) {
-                        err = "write";
-                        err_type = IO_ERR_EXTERNAL;
-                        informAboutError();
-                        terminate = true;
+                        break;
                     }
                 }
             }

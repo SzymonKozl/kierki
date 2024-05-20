@@ -9,9 +9,9 @@
 #include "chrono"
 
 Logger::Logger(std::ostream &ostream, bool dummy):
-    output(ostream),
     dummy(dummy),
-    mutex()
+    mutex(),
+    output(ostream)
 {}
 
 void Logger::log(Message m) {

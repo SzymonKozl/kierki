@@ -23,7 +23,15 @@
 
 constexpr char MSG_SEP = '\r';
 
+enum GameStage {
+    PRE,
+    TRICKS,
+    AFTER_SCORE,
+    AFTER_TOTAL
+};
+
 void Client::run() {
+    GameStage stage = PRE;
     fcntl(0, F_SETFL, fcntl(0, F_GETFL) | O_NONBLOCK);
     std::string nextCmd;
     try {
@@ -32,7 +40,7 @@ void Client::run() {
         std::cerr << "Error on" << e.what();
         exit(1);
     }
-    sockaddr_in addr = {AF_INET, htons(serverAddr.first), getIntAddr(serverAddr.second)};
+    sockaddr_in addr = {AF_INET, htons(serverAddr.first), {getIntAddr(serverAddr.second)}};
 
     ownAddr = getAddrStruct(tcp_sock);
 
@@ -78,11 +86,22 @@ void Client::run() {
                 std::cerr << "poll - tcp";
             }
             else if (poll_fds[0].revents & POLLIN) {
-                std::string msg = readUntilRN(tcp_sock);
+                std::string msg;
+                try {
+                    msg = readUntilRN(tcp_sock);
+                } catch (std::runtime_error &e) {
+                    if (errno == 0 && stage == AFTER_TOTAL) {
+                        exit(0);
+                    }
+                    else {
+                        exit(1);
+                    }
+                }
                 Message msgObj(serverAddr, ownAddr, msg);
                 player.anyMsg(msgObj);
                 resp_array msg_array = parse_msg(msg, false);
                 if (msg_array[0].second == "DEAL") {
+                    stage = TRICKS;
                     auto type = (RoundType) (msg_array[1].second.at(0) - '0');
                     Hand hand;
                     for (int i = 3; i < 16; i ++) hand.push_back(Card::fromString(msg_array[i].second));
@@ -103,7 +122,9 @@ void Client::run() {
                     for (int i = 2 ; i < 6; i++) t.push_back(Card::fromString(msg_array[i].second));
                     player.takenMsg(s, t);
                 }
-                else if (msg_array[0].second == "score" || msg_array[0].second == "total") {
+                else if (msg_array[0].second == "SCORE" || msg_array[0].second == "TOTAL") {
+                    if (msg_array[0].second == "SCORE" ) stage = AFTER_SCORE;
+                    else stage = AFTER_TOTAL;
                     bool total = msg_array[0].second == "TOTAL";
                     score_map res;
                     for (int i = 1; i <= 4; i ++) {

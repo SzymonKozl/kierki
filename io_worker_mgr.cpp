@@ -4,6 +4,7 @@
 
 #include "io_worker_mgr.h"
 #include "constants.h"
+#include "common_types.h"
 
 #include "unistd.h"
 #include "cerrno"
@@ -12,11 +13,15 @@
 
 
 IOWorkerMgr::IOWorkerMgr(IOWorkerMgrPipeCb &&pipeCb):
-    workers(),
-    pipes(),
-    threads(),
-    nextIx(0),
-    pipeCb(pipeCb)
+        workers(),
+        pipes(),
+        threads(),
+        nextIx(0),
+        pipeCb(pipeCb),
+        clearThreadsSemaphore{0},
+        threadsStructuresMutex(),
+        toErase(),
+        finishFlag(false)
 {}
 
 IOWorkerMgr::~IOWorkerMgr() {
@@ -36,42 +41,59 @@ void IOWorkerMgr::signal(int ix) {
     }
 }
 
-void IOWorkerMgr::sendKill(int ix) {
-    workers.at(ix)->scheduleDeath();
-    signal(ix);
+void IOWorkerMgr::sendKill(int ix, bool locked) {
+    if (!locked) {
+        MutexGuard lock(threadsStructuresMutex);
+        workers.at(ix)->scheduleDeath();
+        signal(ix);
+    }
+    else {
+        workers.at(ix)->scheduleDeath();
+        signal(ix);
+    }
 }
 
-void IOWorkerMgr::killAll() {
+void IOWorkerMgr::finish() {
+    MutexGuard lock(threadsStructuresMutex);
     for (auto & worker : workers) {
-        sendKill(worker.first);
+        sendKill(worker.first, true);
     }
 }
 
 void IOWorkerMgr::sendJob(SSendJob job, int ix) {
+    MutexGuard lock(threadsStructuresMutex);
     workers.at(ix)->newJob(std::move(job));
     signal(ix);
 }
 
 void IOWorkerMgr::eraseWorker(int ix) {
-    workers.erase(ix);
-    threads.erase(ix);
-    if (close(pipes.at(ix).first) || close(pipes.at(ix).second)) {
-        pipeCb({"close", errno, IO_ERR_INTERNAL});
+    MutexGuard lock(threadsStructuresMutex);
+    toErase.push_back(ix);
+    clearThreadsSemaphore.release();
+}
+
+void IOWorkerMgr::waitForClearing() {
+    bool exitFlag = false;
+    std::vector<Sjthread> q;
+    while (!exitFlag) {
+        clearThreadsSemaphore.acquire();
+        { // mutex lock lifetime scope
+            MutexGuard lock(threadsStructuresMutex);
+            while (!toErase.empty()) {
+                int ix = toErase.back();
+                q.push_back(threads[ix]);
+                threads.erase(ix);
+                workers.erase(ix);
+                // todo pipe cleanup
+                toErase.pop_back();
+            }
+            if (finishFlag && workers.empty()) exitFlag = true;
+        }
+        q.clear(); // destroying jthreads outside mutex scope to prevent holding mutex during join
     }
 }
 
-void IOWorkerMgr::joinThread(int ix) {
-    threads[ix].join();
-}
-
-void IOWorkerMgr::halt() {
-    for (auto& worker: workers) {
-        worker.second->halt();
-    }
-}
-
-void IOWorkerMgr::unhalt() {
-    for (auto& worker: workers) {
-        worker.second->unhalt();
-    }
+void IOWorkerMgr::releaseCleaner() {
+    MutexGuard lock(threadsStructuresMutex);
+    finishFlag = true;
 }
