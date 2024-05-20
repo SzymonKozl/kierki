@@ -43,14 +43,13 @@ void IOWorkerHandler::pollAction() {
     std::string msg;
     try {
         msg = readUntilRN(main_fd);
-    } catch (std::runtime_error &e) {
+    } catch (...) {
         // invalid message from Client, disconnecting
         int errno_cpy = errno;
         if (close(main_fd)) {
             errCb({"close", errno, IO_ERR_EXTERNAL});
         }
         if (introduced) disconnectCb(client_loc, {"pipe", errno_cpy, IO_ERR_EXTERNAL});
-        exitCb(id);
         return;
     }
 
@@ -73,11 +72,13 @@ void IOWorkerHandler::pollAction() {
             return;
         }
     }
-    if (close(main_fd)) {
-        errCb({"close", errno, IO_ERR_EXTERNAL});
+    else {
+        if (close(main_fd)) {
+            errCb({"close", errno, IO_ERR_EXTERNAL});
+        }
+        if (introduced) disconnectCb(client_loc, {"", 0, IO_ERR_NOERR});
+        return;
     }
-    if (introduced) disconnectCb(client_loc, {"", 0, IO_ERR_NOERR});
-    exitCb(id);
 }
 
 void IOWorkerHandler::quitAction() {
