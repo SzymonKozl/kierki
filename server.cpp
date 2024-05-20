@@ -33,9 +33,9 @@ Server::Server(game_scenario &&scenario):
     roundMode(TRICK_PENALTY),
     gameStateMutex(),
     table(),
-    exitFlag(false),
+    exitCode(0),
     playersConnected(0),
-    lastDeal(nullptr),
+    lastDeal(),
     takenInRound()
 {
     for (Side s: {W, E, S, N}) {
@@ -48,13 +48,14 @@ Server::Server(game_scenario &&scenario):
 void Server::run() {
     prepareRound();
     int tcp_listen_sock = makeTCPSock(9009);
-    int connector_ix = workerMgr.spawnNewWorker<IOWorkerConnect>(
+    workerMgr.spawnNewWorker<IOWorkerConnect>(
         tcp_listen_sock,
-        (IOWorkerExitCb)[&](int status) { workerQuits(status);},
-        (IOWorkerSysErrCb) [&](errInfo info) { handleSysErr(info);},
-        (IOWorkerConnectionMadeCb ) [&](int fd, net_address conn_addr) { forwardConnection(fd, std::move(conn_addr));}
+        (IOWorkerExitCb)[this](int status) { this->workerQuits(status);},
+        (IOWorkerSysErrCb) [this](errInfo info) { this->handleSysErr(info);},
+        (IOWorkerConnectionMadeCb ) [this](int fd, net_address conn_addr) { this->forwardConnection(fd, std::move(conn_addr));}
     );
-    workerMgr.joinThread(connector_ix);
+    workerMgr. waitForClearing();
+    exit(exitCode);
 }
 
 bool Server::furtherMovesNeeded() noexcept {
@@ -98,18 +99,18 @@ bool Server::furtherMovesNeeded() noexcept {
 }
 
 void Server::handleSysErr(errInfo info) {
-    std::lock_guard<std::mutex> lock(gameStateMutex);
+    MutexGuard lock(gameStateMutex);
     auto [call, error, type] = info;
     std::cerr << "System error on " << call << " call! Error code: " << error << std::endl;
-    exitFlag = true;
     if (type == IO_ERR_INTERNAL) {
+        exitCode = 1;
         std::cerr << "internal error! quitting server";
-        workerMgr.killAll();
+        finalize();
     }
 }
 
 void Server::workerQuits(int id) {
-    std::lock_guard<std::mutex> lock(gameStateMutex);
+    MutexGuard lock(gameStateMutex);
     workerMgr.eraseWorker(id);
 }
 
@@ -130,7 +131,7 @@ void Server::prepareRound() {
 }
 
 void Server::playerTricked(Side side, Card card, int trickNoArg) {
-    std::lock_guard<std::mutex> lock(gameStateMutex);
+    MutexGuard lock(gameStateMutex);
     if (playersConnected < 4 || nextMove != side || !GameRules::isMoveLegal(side, card, hands)) {
         workerMgr.sendJob(std::static_pointer_cast<SendJob>(std::make_shared<SendJobWrong>(trickNoArg)), activeSides[side]);
         return;
@@ -160,11 +161,8 @@ void Server::playerTricked(Side side, Card card, int trickNoArg) {
             clearTmpPenalties();
             roundNumber ++;
             if (roundNumber == gameScenario.size()) {
-                sleep(2);
-                workerMgr.killAll();
-                // what now?
-                // todo
-                exit(0); // prob bad idea
+                finalize();
+                return;
             }
             prepareRound();
             for (Side s: sides_) {
@@ -177,12 +175,13 @@ void Server::playerTricked(Side side, Card card, int trickNoArg) {
 }
 
 void Server::playerIntro(Side side, int workerIx) {
-    std::lock_guard<std::mutex> lock(gameStateMutex);
+    MutexGuard lock(gameStateMutex);
+    std::cout << "ugabuga\n";
     if (activeSides[side] == -1) {
         // accepting new client
         activeSides[side] = workerIx;
         playersConnected ++;
-        if (playersConnected == 4 && lastDeal.get() == nullptr) {
+        if (playersConnected == 4 && lastDeal.use_count() == 0) {
             for (Side s: sides_) {
                 SSendJob msgDeal = std::static_pointer_cast<SendJob>(std::make_shared<SendDealJob>(roundMode, nextMove, hands[s]));
                 workerMgr.sendJob(msgDeal, activeSides[s]);
@@ -196,7 +195,6 @@ void Server::playerIntro(Side side, int workerIx) {
                 workerMgr.sendJob(msg, workerIx);
             }
             if (playersConnected == 4) {
-                workerMgr.unhalt();
                 SSendJob msgTrick = std::static_pointer_cast<SendJob>(std::make_shared<SendJobTrick>(table, trickNo));
                 workerMgr.sendJob(msgTrick, activeSides[nextMove]);
             }
@@ -215,12 +213,9 @@ void Server::playerDisconnected(Side s, errInfo info) {
         handleSysErr(info);
     }
     else if (info.errType == IO_ERR_EXTERNAL) {
-        std::lock_guard<std::mutex> lock(gameStateMutex);
+        MutexGuard lock(gameStateMutex);
         activeSides[s] = -1;
         playersConnected -= 1;
-        if (playersConnected == 3) {
-            workerMgr.halt();
-        }
     }
 }
 
@@ -247,15 +242,20 @@ int Server::makeTCPSock(uint16_t port) {
 }
 
 void Server::forwardConnection(int fd, net_address conn_addr) {
-    std::lock_guard<std::mutex> lock(gameStateMutex);
+    MutexGuard lock(gameStateMutex);
     workerMgr.spawnNewWorker<IOWorkerHandler>(
             fd,
-            [&] (int ix) { workerQuits(ix);},
-            [&] (errInfo info) { handleSysErr(info);},
-            [&] (Side s, int ix) { playerIntro(s, ix);},
-            [&] (int t, Side s, const Card& c) { playerTricked(s, c, t);},
-            [&] (Side s, errInfo info) { playerDisconnected(s, info);},
+            [this] (int ix) { this->workerQuits(ix);},
+            [this] (errInfo info) { this->handleSysErr(info);},
+            [this] (Side s, int ix) { this->playerIntro(s, ix);},
+            [this] (int t, Side s, const Card& c) { this->playerTricked(s, c, t);},
+            [this] (Side s, errInfo info) { this->playerDisconnected(s, info);},
             std::move(conn_addr),
             own_addr
             );
+}
+
+void Server::finalize() {
+    workerMgr.releaseCleaner();
+    workerMgr.finish();
 }

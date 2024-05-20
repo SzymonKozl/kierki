@@ -14,9 +14,9 @@
 class Message {
 public:
     Message(
-            net_address const& sender,
-            net_address const& receiver,
-            std::string const& payload
+            net_address  sender,
+            net_address  receiver,
+            std::string  payload
             );
     std::string toString();
 private:

@@ -14,6 +14,8 @@
 #include "string"
 #include "thread"
 #include "memory"
+#include "mutex"
+#include "semaphore"
 
 using IOWorkerMgrPipeCb = std::function<void(errInfo)>;
 
@@ -21,28 +23,35 @@ class IOWorkerMgr {
 public:
     template<class T, class... Args> requires std::is_base_of_v<IOWorker, T> &&  std::constructible_from<T, int, int, Args...>
     int spawnNewWorker(Args... args);
-    void sendKill(int ix);
-    void killAll();
+    void sendKill(int ix, bool locked = false);
+    void finish();
     void sendJob(SSendJob job, int ix);
     void eraseWorker(int ix);
-    void joinThread(int ix);
-    void halt();
-    void unhalt();
+    void waitForClearing();
+    void releaseCleaner();
     explicit IOWorkerMgr(IOWorkerMgrPipeCb &&pipeCb);
     ~IOWorkerMgr();
 private:
+    using Sjthread = std::shared_ptr<std::jthread>;
+
     void signal(int ix);
 
     std::unordered_map<int, SIOWorker> workers;
     std::unordered_map<int, std::pair<int, int>> pipes;
-    std::unordered_map<int, std::jthread> threads;
+    std::unordered_map<int, Sjthread> threads;
     int nextIx;
     IOWorkerMgrPipeCb pipeCb;
+
+    std::binary_semaphore clearThreadsSemaphore;
+    std::mutex threadsStructuresMutex;
+    std::vector<int> toErase;
+    bool finishFlag;
 };
 
 template<class T, class ...Args>
 requires std::is_base_of_v<IOWorker, T> && std::constructible_from<T, int, int, Args...>
 int IOWorkerMgr::spawnNewWorker(Args ...args) {
+    MutexGuard lock(threadsStructuresMutex);
     int ix = nextIx++;
     int pipe_fd[2];
     int ret = pipe(pipe_fd);
@@ -53,7 +62,7 @@ int IOWorkerMgr::spawnNewWorker(Args ...args) {
     pipes.emplace(ix, std::make_pair(pipe_fd[1], pipe_fd[0]));
     workers.emplace(ix, std::static_pointer_cast<IOWorker>(std::make_shared<T>(pipe_fd[0], ix, args...)));
 
-    threads.emplace(ix, std::jthread([&]() { workers.at(ix)->run(); }));
+    threads.emplace(ix, std::make_shared<std::jthread>([ix, this]() { this->workers.at(ix)->run(); }));
     return ix;
 }
 

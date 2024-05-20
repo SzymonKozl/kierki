@@ -3,6 +3,8 @@
 //
 
 #include "message.h"
+
+#include <utility>
 #include "common_types.h"
 #include "utils.h"
 
@@ -11,11 +13,11 @@
 #include "sstream"
 #include "iomanip"
 
-Message::Message(net_address const& sender, net_address const& receiver, const std::string &payload):
-        sender(sender),
-        receiver(receiver),
-        payload(payload),
-        registered(std::time(nullptr))
+Message::Message(net_address  sender, net_address  receiver, std::string payload):
+        registered(std::time(nullptr)),
+        sender(std::move(sender)),
+        receiver(std::move(receiver)),
+        payload(std::move(payload))
 {}
 
 std::string Message::toString() {

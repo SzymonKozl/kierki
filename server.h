@@ -31,6 +31,7 @@ private:
     void updatePenalties();
     void clearTmpPenalties();
     void playerDisconnected(Side s, errInfo info);
+    void finalize();
 
     game_scenario gameScenario;
     IOWorkerMgr workerMgr;
@@ -44,7 +45,7 @@ private:
     RoundType roundMode;
     std::mutex gameStateMutex;
     Table table;
-    bool exitFlag;
+    int exitCode;
     int playersConnected;
     net_address own_addr;
     SSendJob lastDeal;

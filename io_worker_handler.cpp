@@ -69,8 +69,7 @@ void IOWorkerHandler::pollAction() {
         }
         else if (arr[0].second == "TRICK_C") {
             int round_no = stoi(arr[1].second);
-            Card card = Card::fromString(arr[2].second);
-            trickCb(round_no, client_loc, card);
+            trickCb(round_no, client_loc, Card::fromString(arr[2].second));
             return;
         }
     }

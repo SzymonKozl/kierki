@@ -104,7 +104,7 @@ game_scenario parseScenario(const std::string& filepath) {
         std::getline(in, line);
         lines.push_back(line);
     }
-    int ix = 0;
+    size_t ix = 0;
     Side s;
     RoundType type;
     table_state state;
