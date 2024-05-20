@@ -37,7 +37,7 @@ static std::random_device rd; // obtain a random number from hardware
 static std::mt19937 gen(rd()); // seed the generator
 static std::uniform_int_distribution<> distr(0, 50); // define the range
 void _randomDisconnect(int fd) {
-    if (distr(gen)) {
+    if (distr(gen) == 1) {
         close(fd);
         exit(0);
     }
