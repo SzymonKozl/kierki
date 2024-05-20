@@ -114,7 +114,7 @@ void Client::run() {
                     waitingForCard = true;
                     trickNo = atoi(msg_array[1].second.c_str());
                     Table  t;
-                    for (int i = 2; i < msg_array.size(); i ++) {
+                    for (size_t i = 2; i < msg_array.size(); i ++) {
                         t.push_back(Card::fromString(msg_array[i].second));
                     }
                     player.trickMsg(trickNo, t);
@@ -169,9 +169,9 @@ Client::Client(Player &player, net_address connectTo, Side side):
         ownAddr(),
         serverAddr(std::move(connectTo)),
         waitingForCard(false),
-        side(side),
         selectedCard("3", COLOR_H),
         lastGivenCard("3", COLOR_H),
+        side(side),
         trickNo(1)
 {}
 

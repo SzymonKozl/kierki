@@ -132,12 +132,13 @@ void Server::prepareRound() {
 
 void Server::playerTricked(Side side, Card card, int trickNoArg) {
     MutexGuard lock(gameStateMutex);
-    if (playersConnected < 4 || nextMove != side || !GameRules::isMoveLegal(side, card, hands)) {
+    if (playersConnected < 4 || nextMove != side || !GameRules::isMoveLegal(side, card, hands, table)) {
         workerMgr.sendJob(std::static_pointer_cast<SendJob>(std::make_shared<SendJobWrong>(trickNoArg)), activeSides[side]);
         return;
     }
 
     table.push_back(card);
+    rmCardIfPresent(hands[side], card);
     nextMove = nxtSide(nextMove);
     if (table.size() == 4ul) {
         auto [taker, penalty] = GameRules::whoTakes(nextMove, table, roundMode, trickNoArg);

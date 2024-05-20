@@ -6,6 +6,8 @@
 #include "utils.h"
 #include "common_types.h"
 
+#include "stdexcept"
+
 constexpr int TRICK_PENALTY_VAL = 1;
 constexpr int HEART_PENALTY_VAL = 1;
 constexpr int QUEEN_PENALTY_VAL = 5;
@@ -76,4 +78,5 @@ std::pair<Side, int> GameRules::whoTakes(const Side &starting_side, const Table 
             return {takerSide, pen};
         }
     }
+    throw std::runtime_error("no round type matched");
 }

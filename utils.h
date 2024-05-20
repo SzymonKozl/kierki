@@ -31,4 +31,6 @@ void ignoreBrokenPipe();
 
 void rmIntersection(Hand& hand, const Table& table);
 
+void rmCardIfPresent(Hand& hand, const Card& card);
+
 #endif //KIERKI_UTILS_H

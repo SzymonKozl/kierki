@@ -153,11 +153,15 @@ void ignoreBrokenPipe() {
 
 void rmIntersection(Hand& hand, const Table& table) {
     for (const Card& ct: table) {
-        for (auto it = hand.begin(); it != hand.end(); it ++) {
-            if (it->getColor() == ct.getColor() && it->getValue() == ct.getValue()) {
-                hand.erase(it);
-                break;
-            }
+        rmCardIfPresent(hand, ct);
+    }
+}
+
+void rmCardIfPresent(Hand& hand, const Card& card) {
+    for (auto it = hand.begin(); it != hand.end(); it ++) {
+        if (it->getColor() == card.getColor() && it->getValue() == card.getValue()) {
+            hand.erase(it);
+            return;
         }
     }
 }
