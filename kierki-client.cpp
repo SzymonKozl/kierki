@@ -18,7 +18,7 @@ int main(int argc, char* argv[]) {
     if (argc == 2) {
         s = (Side) argv[1][0];
     }
-    Client clientObj(player, (net_address)std::make_pair(9009, "127.0.0.1"), s);
+    Client clientObj(player, (net_address)std::make_pair(9009, "127.0.0.1"), s, AF_UNSPEC);
     player.setup(
             [&clientObj](const Card& c) {clientObj.chooseCard(c);},
             [&clientObj]() {return clientObj.isWaitingForCard();}

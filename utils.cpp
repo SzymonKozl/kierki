@@ -5,6 +5,7 @@
 #include "utils.h"
 #include "constants.h"
 #include "game_rules.h"
+#include "common_types.h"
 
 #include "fstream"
 #include "string"
@@ -58,23 +59,39 @@ std::string readUntilRN(int fd) {
 int setSockTimeout(int fd, int milis);
 
 
-in_addr_t getIntAddr(std::string host) {
+sockaddr_any getIntAddr(const std::string& host, int proto, uint16_t port) {
     addrinfo hints;
     memset(&hints, 0, sizeof(struct addrinfo));
-    hints.ai_family = AF_INET; // IPv4
+    hints.ai_family = proto;
     hints.ai_socktype = SOCK_STREAM;
     hints.ai_protocol = IPPROTO_TCP;
 
-    struct addrinfo *address_result;
+    addrinfo* address_result;
     int errcode = getaddrinfo(host.c_str(), nullptr, &hints, &address_result);
     if (errcode != 0) {
         throw std::runtime_error("getaddrinfo");
     }
-    in_addr_t addr = ((struct sockaddr_in *) (address_result->ai_addr))->sin_addr.s_addr;
+    sa_family_t proto_res = address_result->ai_addr->sa_family;
+    sockaddr_any resp;
+    resp.family = proto_res;
+    if (proto_res == AF_INET) {
+        auto * tmp = new sockaddr_in;
+        tmp->sin_addr.s_addr = ((sockaddr_in*) address_result->ai_addr)->sin_addr.s_addr;
+        tmp->sin_port = port;
+        tmp->sin_family = ((sockaddr_in*) address_result->ai_addr)->sin_family;
+        resp.addr = {.addr_in = tmp};
+    }
+    else {
+        auto * tmp = new sockaddr_in6;
+        tmp->sin6_addr = ((sockaddr_in6*) address_result->ai_addr)->sin6_addr;
+        tmp->sin6_port = port;
+        tmp->sin6_family = ((sockaddr_in6*) address_result->ai_addr)->sin6_family;
+        resp.addr = {.addr_in6 = tmp};
+    }
 
     freeaddrinfo(address_result);
 
-    return addr;
+    return resp;
 }
 
 net_address getAddrStruct(int fd) {

@@ -12,6 +12,18 @@
 #include "tuple"
 #include "cstdint"
 #include "mutex"
+#include "arpa/inet.h"
+
+struct sockaddr_any {
+private:
+    union addr_any_u {
+        sockaddr_in *addr_in;
+        sockaddr_in6 *addr_in6;
+    };
+public:
+    sa_family_t family;
+    addr_any_u addr;
+};
 
 enum Side {
     N = 'N',

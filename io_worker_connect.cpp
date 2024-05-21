@@ -21,7 +21,7 @@ IOWorkerConnect::IOWorkerConnect(
         IOWorkerSysErrCb error_callback,
         IOWorkerConnectionMadeCb accept_callback
         ):
-        IOWorker(pipe_fd, id, sock_fd, exit_callback, error_callback),
+        IOWorker(pipe_fd, id, sock_fd, std::move(exit_callback), std::move(error_callback)),
         accCb(std::move(accept_callback))
 {}
 

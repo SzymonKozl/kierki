@@ -54,7 +54,7 @@ void Server::run() {
         (IOWorkerSysErrCb) [this](errInfo info) { this->handleSysErr(info);},
         (IOWorkerConnectionMadeCb ) [this](int fd, net_address conn_addr) { this->forwardConnection(fd, std::move(conn_addr));}
     );
-    workerMgr. waitForClearing();
+    workerMgr.waitForClearing();
     exit(exitCode);
 }
 
@@ -220,12 +220,23 @@ void Server::playerDisconnected(Side s, errInfo info) {
 
 int Server::makeTCPSock(uint16_t port) {
     // todo: ivp6 handling
-    int fd = socket(AF_INET, SOCK_STREAM, 0);
+    int fd = socket(AF_INET6, SOCK_STREAM, 0);
+    int val = 0;
+    if (setsockopt(fd, IPPROTO_IPV6, IPV6_V6ONLY, &val, sizeof val)) {
+        throw std::runtime_error("setsockopt");
+    }
+    val = 1;
+    if (setsockopt(fd, SOL_SOCKET, SO_REUSEPORT, &val, sizeof val)) {
+        throw std::runtime_error("setsockopt");
+    }
     if (fd < 0) {
         throw std::runtime_error("socket");
     }
     if (port) {
-        sockaddr_in server_address = {AF_INET, htons(port), {htonl(INADDR_ANY)}};
+        sockaddr_in6 server_address;
+        server_address.sin6_family = AF_INET6;
+        server_address.sin6_addr = in6addr_any;
+        server_address.sin6_port = htons(port);
         if (bind(fd,(const sockaddr *) &server_address, sizeof server_address)) {
             throw std::runtime_error("bind");
         }
