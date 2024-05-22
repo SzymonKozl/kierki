@@ -21,12 +21,16 @@ std::string readUntilRN(int fd);
 
 Side nxtSide(const Side& s);
 
-in_addr_t getIntAddr(std::string host);
+sockaddr_any getIntAddr(const std::string& host, int proto, uint16_t port);
 
 net_address getAddrStruct(int fd);
 
 game_scenario parseScenario(const std::string& filepath);
 
 void ignoreBrokenPipe();
+
+void rmIntersection(Hand& hand, const Table& table);
+
+void rmCardIfPresent(Hand& hand, const Card& card);
 
 #endif //KIERKI_UTILS_H

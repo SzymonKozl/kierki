@@ -28,7 +28,9 @@ constexpr char MSG_SEP = '\r';
 
 enum GameStage {
     PRE,
-    TRICKS,
+    AFTER_FIRST_DEAL,
+    AFTER_DEAL,
+    AFTER_TRICK,
     AFTER_SCORE,
     AFTER_TOTAL
 };
@@ -47,18 +49,31 @@ void Client::run() {
     GameStage stage = PRE;
     fcntl(0, F_SETFL, fcntl(0, F_GETFL) | O_NONBLOCK);
     std::string nextCmd;
+
+    sockaddr_any addr = getIntAddr(serverAddr.second, proto, htons(serverAddr.first));
+    sockaddr* sockAddr = (addr.family == AF_INET) ? (sockaddr *)addr.addr.addr_in : (sockaddr *)addr.addr.addr_in6;
+    socklen_t len = (addr.family == AF_INET) ? sizeof(sockaddr_in) : sizeof(sockaddr_in6);
+
+    proto = sockAddr->sa_family;
+
     try {
-        tcp_sock = makeConnection();
+        tcp_sock = makeConnection(proto);
     } catch (std::runtime_error &e) {
         std::cerr << "Error on" << e.what();
         exit(1);
     }
-    sockaddr_in addr = {AF_INET, htons(serverAddr.first), {getIntAddr(serverAddr.second)}};
 
     ownAddr = getAddrStruct(tcp_sock);
 
-    if (connect(tcp_sock, (sockaddr *) &addr, sizeof addr)) {
+    if (connect(tcp_sock, sockAddr, len)) {
         throw std::runtime_error("connect");
+    }
+
+    if (addr.family == AF_INET) {
+        delete (addr.addr.addr_in);
+    }
+    else {
+        delete (addr.addr.addr_in6);
     }
 
     _randomDisconnect(tcp_sock);
@@ -118,7 +133,7 @@ void Client::run() {
                 player.anyMsg(msgObj);
                 resp_array msg_array = parse_msg(msg, false);
                 if (msg_array[0].second == "DEAL") {
-                    stage = TRICKS;
+                    stage = (stage == PRE) ? AFTER_FIRST_DEAL : AFTER_DEAL;
                     _randomDisconnect(tcp_sock);
                     auto type = (RoundType) (msg_array[1].second.at(0) - '0');
                     Hand hand;
@@ -126,11 +141,12 @@ void Client::run() {
                     player.dealMsg(type, hand);
                 }
                 else if (msg_array[0].second == "TRICK_S") {
+                    stage = AFTER_TRICK;
                     _randomDisconnect(tcp_sock);
                     waitingForCard = true;
                     trickNo = atoi(msg_array[1].second.c_str());
                     Table  t;
-                    for (int i = 2; i < msg_array.size(); i ++) {
+                    for (size_t i = 2; i < msg_array.size(); i ++) {
                         t.push_back(Card::fromString(msg_array[i].second));
                     }
                     player.trickMsg(trickNo, t);
@@ -140,7 +156,7 @@ void Client::run() {
                     Side s = (Side) msg_array[1].second.at(0);
                     Table t;
                     for (int i = 2 ; i < 6; i++) t.push_back(Card::fromString(msg_array[i].second));
-                    player.takenMsg(s, t);
+                    player.takenMsg(s, t, stage == AFTER_FIRST_DEAL);
                 }
                 else if (msg_array[0].second == "SCORE" || msg_array[0].second == "TOTAL") {
                     if (msg_array[0].second == "SCORE" ) stage = AFTER_SCORE;
@@ -165,8 +181,8 @@ void Client::run() {
     }
 }
 
-int Client::makeConnection() {
-    int fd = socket(AF_INET, SOCK_STREAM, 0);
+int Client::makeConnection(sa_family_t proto) {
+    int fd = socket(proto, SOCK_STREAM, 0);
     if (fd < 0) throw std::runtime_error("socket");
     return fd;
 }
@@ -182,16 +198,17 @@ void Client::chooseCard(const Card& c) {
     }
 }
 
-Client::Client(Player &player, net_address connectTo, Side side):
+Client::Client(Player &player, net_address connectTo, Side side, sa_family_t proto):
         tcp_sock(-1),
         player(player),
         ownAddr(),
         serverAddr(std::move(connectTo)),
         waitingForCard(false),
-        side(side),
         selectedCard("3", COLOR_H),
         lastGivenCard("3", COLOR_H),
-        trickNo(1)
+        side(side),
+        trickNo(1),
+        proto(proto)
 {}
 
 void Client::sendMessage(const SSendJob& job) const {

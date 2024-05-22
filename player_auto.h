@@ -22,7 +22,7 @@ public:
     PlayerAuto();
 
     void trickMsg(int trickNo, const Table& table) override;
-    void takenMsg(Side side, const Table& cards) override;
+    void takenMsg(Side side, const Table& cards, bool apply) override;
     void scoreMsg(const score_map scores, bool total) override;
     void dealMsg(int trickMode, Hand hand) override;
     void wrongMsg(int trickNo) override;

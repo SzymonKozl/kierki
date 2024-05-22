@@ -42,9 +42,8 @@ resp_array parse_msg(std::string msg, bool server_side) {
         }
         reg = std::regex(std::string(patterns[i]));
         if (std::regex_match(msg, reg)) {
-            int itr;
+            size_t itr;
             int start;
-            char t;
             switch (i) {
                 case 0:
                     res.push_back(std::make_pair("type", "IAM"));
@@ -52,7 +51,7 @@ resp_array parse_msg(std::string msg, bool server_side) {
                     break;
                 case 1:
                     res.push_back(std::make_pair("type", "BUSY"));
-                    for (int j = 4; j < msg.size(); j ++) {
+                    for (size_t j = 4; j < msg.size(); j ++) {
                         res.push_back(std::make_pair("side", msg.substr(j, 1)));
                     }
                     break;
