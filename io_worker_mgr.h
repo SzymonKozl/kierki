@@ -17,7 +17,7 @@
 #include "mutex"
 #include "semaphore"
 
-using IOWorkerMgrPipeCb = std::function<void(errInfo)>;
+using IOWorkerMgrPipeCb = std::function<void(ErrInfo)>;
 
 class IOWorkerMgr {
 public:

@@ -23,7 +23,7 @@
 
 Server::Server(game_scenario &&scenario):
     gameScenario(scenario),
-    workerMgr([&](errInfo info) { handleSysErr(info);}),
+    workerMgr([&](ErrInfo info) { handleSysErr(info);}),
     activeSides(),
     penalties(),
     hands(),
@@ -36,7 +36,8 @@ Server::Server(game_scenario &&scenario):
     exitCode(0),
     playersConnected(0),
     lastDeal(),
-    takenInRound()
+    takenInRound(),
+    exiting(false)
 {
     for (Side s: {W, E, S, N}) {
         activeSides[s] = -1;
@@ -50,9 +51,8 @@ void Server::run() {
     int tcp_listen_sock = makeTCPSock(9009);
     workerMgr.spawnNewWorker<IOWorkerConnect>(
         tcp_listen_sock,
-        (IOWorkerExitCb)[this](int status) { this->workerQuits(status);},
-        (IOWorkerSysErrCb) [this](errInfo info) { this->handleSysErr(info);},
-        (IOWorkerConnectionMadeCb ) [this](int fd, net_address conn_addr) { this->forwardConnection(fd, std::move(conn_addr));}
+        [this](const ErrArr& arr, int ix, Side side) { this->grandExitCallback(arr, ix, side);},
+        [this](int fd, net_address conn_addr) { this->forwardConnection(fd, std::move(conn_addr));}
     );
     workerMgr.waitForClearing();
     exit(exitCode);
@@ -98,7 +98,7 @@ bool Server::furtherMovesNeeded() noexcept {
     }
 }
 
-void Server::handleSysErr(errInfo info) {
+void Server::handleSysErr(ErrInfo info) {
     MutexGuard lock(gameStateMutex);
     auto [call, error, type] = info;
     std::cerr << "System error on " << call << " call! Error code: " << error << std::endl;
@@ -209,7 +209,7 @@ void Server::playerIntro(Side side, int workerIx) {
     }
 }
 
-void Server::playerDisconnected(Side s, errInfo info) {
+void Server::playerDisconnected(Side s, ErrInfo info) {
     if (info.errType != IO_ERR_NOERR) {
         handleSysErr(info);
     }
@@ -242,7 +242,7 @@ int Server::makeTCPSock(uint16_t port) {
         }
     }
 
-    own_addr = getAddrStruct(fd);
+    own_addr = getAddrStruct(fd, AF_INET6);
 
     if (listen(fd, 10)) {
         throw std::runtime_error("listen");
@@ -255,11 +255,9 @@ void Server::forwardConnection(int fd, net_address conn_addr) {
     MutexGuard lock(gameStateMutex);
     workerMgr.spawnNewWorker<IOWorkerHandler>(
             fd,
-            [this] (int ix) { this->workerQuits(ix);},
-            [this] (errInfo info) { this->handleSysErr(info);},
+            [this] (const ErrArr& errs, int ix, Side side) { this->grandExitCallback(errs, ix, side);},
             [this] (Side s, int ix) { this->playerIntro(s, ix);},
             [this] (int t, Side s, const Card& c) { this->playerTricked(s, c, t);},
-            [this] (Side s, errInfo info) { this->playerDisconnected(s, info);},
             std::move(conn_addr),
             own_addr
             );
@@ -268,4 +266,27 @@ void Server::forwardConnection(int fd, net_address conn_addr) {
 void Server::finalize() {
     workerMgr.releaseCleaner();
     workerMgr.finish();
+}
+
+void Server::grandExitCallback(const ErrArr& errArr, int workerIx, Side side) {
+    MutexGuard lock(gameStateMutex);
+    if (exiting) return;
+    if (side != SIDE_NULL_) {
+        activeSides[side] = -1;
+        playersConnected --;
+    }
+    for (ErrInfo errInfo: errArr) {
+        if (errInfo.errType != IO_ERR_NOERR) {
+            auto [call, error, type] = errInfo;
+            std::cerr << "System error on " << call << " call! Error code: " << error << std::endl;
+            if (type == IO_ERR_INTERNAL) {
+                exiting = true;
+                exitCode = 1;
+                std::cerr << "internal error! quitting server";
+                finalize();
+                return;
+            }
+        }
+    }
+    workerMgr.eraseWorker(workerIx);
 }

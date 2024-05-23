@@ -23,7 +23,7 @@ Side nxtSide(const Side& s);
 
 sockaddr_any getIntAddr(const std::string& host, int proto, uint16_t port);
 
-net_address getAddrStruct(int fd);
+net_address getAddrStruct(int fd, sa_family_t proto);
 
 game_scenario parseScenario(const std::string& filepath);
 
