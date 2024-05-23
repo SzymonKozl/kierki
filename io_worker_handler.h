@@ -14,7 +14,6 @@
 
 using IOWorkerIntroCb = std::function<void(Side, int)>;
 using IOWrokerTrickCb = std::function<void(int, Side, Card)>;
-using IOWorkerDisconnectCb = std::function<void(Side, errInfo)>;
 
 class IOWorkerHandler: public IOWorker {
 public:
@@ -23,10 +22,8 @@ public:
             int id,
             int sock_fd,
             IOWorkerExitCb exit_callback,
-            IOWorkerSysErrCb error_callback,
             IOWorkerIntroCb intro_callback,
             IOWrokerTrickCb trick_callback,
-            IOWorkerDisconnectCb disconnect_callback,
             net_address client_addr,
             net_address own_addr
             );
@@ -35,10 +32,8 @@ private:
     void quitAction() override;
 
     Logger logger;
-    IOWorkerDisconnectCb disconnectCb;
     IOWrokerTrickCb trickCb;
     IOWorkerIntroCb introCb;
-    Side client_loc;
     bool introduced;
     net_address client_addr;
     net_address own_addr;

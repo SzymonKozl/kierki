@@ -45,11 +45,13 @@ enum RoundType {
     EVERYTHING = 7
 };
 
-struct errInfo {
+struct ErrInfo {
     const std::string& call;
     int errnoVal;
     int errType;
 };
+
+using ErrArr = std::vector<ErrInfo>;
 
 using MutexGuard = std::lock_guard<std::mutex>;
 

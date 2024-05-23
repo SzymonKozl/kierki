@@ -18,25 +18,34 @@ IOWorkerConnect::IOWorkerConnect(
         int id,
         int sock_fd,
         IOWorkerExitCb exit_callback,
-        IOWorkerSysErrCb error_callback,
         IOWorkerConnectionMadeCb accept_callback
         ):
-        IOWorker(pipe_fd, id, sock_fd, std::move(exit_callback), std::move(error_callback)),
+        IOWorker(pipe_fd, id, sock_fd, std::move(exit_callback), IO_ERR_INTERNAL, SIDE_NULL_),
         accCb(std::move(accept_callback))
 {}
 
 
 void IOWorkerConnect::pollAction() {
-    sockaddr_in client_addr;
+    sockaddr client_addr;
     socklen_t client_addr_s = sizeof client_addr;
-    int new_fd = accept(main_fd, (sockaddr *) &client_addr, &client_addr_s);
+    int new_fd = accept(main_fd, &client_addr, &client_addr_s);
     if (new_fd < 0) {
-        errCb({"accept", errno, IO_ERR_INTERNAL});
-        return;
+        errs.emplace_back("accept", errno, IO_ERR_INTERNAL);
+        throw std::runtime_error("");
     }
-    uint16_t port = be16toh(client_addr.sin_port);
-    std::string addr = inet_ntoa(client_addr.sin_addr);
-    accCb(new_fd, std::make_pair(port, addr));
+    if (client_addr.sa_family == AF_INET) {
+        auto* client_v4 = (sockaddr_in*) &client_addr;
+        uint16_t port = be16toh(client_v4->sin_port);
+        std::string addr = inet_ntoa(client_v4->sin_addr);
+        accCb(new_fd, std::make_pair(port, addr));
+    }
+    else {
+        auto* client_v6 = (sockaddr_in6*) &client_addr;
+        uint16_t port = be16toh(client_v6->sin6_port);
+        char buff[128];
+        std::string addr = inet_ntop(AF_INET6, (const void *) &client_v6->sin6_addr, buff, (socklen_t)128);
+        accCb(new_fd, std::make_pair(port, addr));
+    }
 }
 
 void IOWorkerConnect::quitAction() {

@@ -94,16 +94,32 @@ sockaddr_any getIntAddr(const std::string& host, int proto, uint16_t port) {
     return resp;
 }
 
-net_address getAddrStruct(int fd) {
-    sockaddr_in addr_server;
-    socklen_t socklen = sizeof addr_server;
+net_address getAddrStruct(int fd, sa_family_t proto) {
+    uint16_t s_port;
+    std::string s_addr;
+    if (proto == AF_INET) {
+        sockaddr_in addr_server;
+        socklen_t socklen = sizeof addr_server;
 
-    if (getsockname(fd, (sockaddr *) &addr_server, &socklen)) {
-        throw std::runtime_error("getsockname");
+        if (getsockname(fd, (sockaddr *) &addr_server, &socklen)) {
+            throw std::runtime_error("getsockname");
+        }
+
+        s_port = ntohs(addr_server.sin_port);
+        s_addr = inet_ntoa(addr_server.sin_addr);
     }
+    else {
+        sockaddr_in6 addr_server;
+        socklen_t socklen = sizeof addr_server;
 
-    uint16_t s_port = ntohs(addr_server.sin_port);
-    std::string s_addr = inet_ntoa(addr_server.sin_addr);
+        if (getsockname(fd, (sockaddr *) &addr_server, &socklen)) {
+            throw std::runtime_error("getsockname");
+        }
+
+        s_port = ntohs(addr_server.sin6_port);
+        char buff[128];
+        s_addr = inet_ntop(AF_INET6, &addr_server.sin6_addr, buff, 128);
+    }
     return std::make_pair(s_port, s_addr);
 }
 

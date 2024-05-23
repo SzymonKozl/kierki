@@ -21,19 +21,15 @@ IOWorkerHandler::IOWorkerHandler(
         int id,
         int sock_fd,
         IOWorkerExitCb exit_callback,
-        IOWorkerSysErrCb error_callback,
         IOWorkerIntroCb intro_callback,
         IOWrokerTrickCb trick_callback,
-        IOWorkerDisconnectCb disconnect_callback,
         net_address client_addr,
         net_address own_addr
 ):
-        IOWorker(pipe_fd, id, sock_fd, exit_callback, error_callback),
+        IOWorker(pipe_fd, id, sock_fd, std::move(exit_callback), IO_ERR_EXTERNAL, SIDE_NULL_),
         logger(std::cout, false),
-        disconnectCb(std::move(disconnect_callback)),
         trickCb(std::move(trick_callback)),
         introCb(std::move(intro_callback)),
-        client_loc(SIDE_NULL_),
         introduced(false),
         client_addr(std::move(client_addr)),
         own_addr(std::move(own_addr))
@@ -47,10 +43,9 @@ void IOWorkerHandler::pollAction() {
         // invalid message from Client, disconnecting
         int errno_cpy = errno;
         if (close(main_fd)) {
-            errCb({"close", errno, IO_ERR_EXTERNAL});
+            errs.emplace_back("close", errno, IO_ERR_EXTERNAL);
         }
-        if (introduced) disconnectCb(client_loc, {"pipe", errno_cpy, IO_ERR_EXTERNAL});
-        return;
+        throw std::runtime_error("");
     }
 
     Message messageObj(client_addr, own_addr, msg);
@@ -62,25 +57,23 @@ void IOWorkerHandler::pollAction() {
 
             Side s = static_cast<Side>(arr[1].second.at(0));
             introduced = true;
-            client_loc = s;
+            side = s;
             introCb(s, id);
             return;
         }
         else if (arr[0].second == "TRICK_C") {
             int round_no = stoi(arr[1].second);
-            trickCb(round_no, client_loc, Card::fromString(arr[2].second));
+            trickCb(round_no, side, Card::fromString(arr[2].second)); //todo what if not introduced
             return;
         }
     }
     else {
         if (close(main_fd)) {
-            errCb({"close", errno, IO_ERR_EXTERNAL});
+            errs.emplace_back("close", errno, IO_ERR_EXTERNAL);
         }
-        if (introduced) disconnectCb(client_loc, {"", 0, IO_ERR_NOERR});
-        return;
+        throw std::runtime_error("");
     }
 }
 
 void IOWorkerHandler::quitAction() {
-    if (introduced) disconnectCb(client_loc, {err, errno, err_type});
 }

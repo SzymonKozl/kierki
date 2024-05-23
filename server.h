@@ -21,7 +21,7 @@ public:
     void run();
 private:
     bool furtherMovesNeeded() noexcept;
-    void handleSysErr(errInfo info);
+    void handleSysErr(ErrInfo info);
     void playerTricked(Side side, Card card, int trickNoArg);
     void playerIntro(Side side, int workerIx);
     void prepareRound();
@@ -30,8 +30,9 @@ private:
     int makeTCPSock(uint16_t port);
     void updatePenalties();
     void clearTmpPenalties();
-    void playerDisconnected(Side s, errInfo info);
+    void playerDisconnected(Side s, ErrInfo info);
     void finalize();
+    void grandExitCallback(const ErrArr& errArr, int workerIx, Side side = SIDE_NULL_); // temporary name
 
     game_scenario gameScenario;
     IOWorkerMgr workerMgr;
@@ -50,6 +51,7 @@ private:
     net_address own_addr;
     SSendJob lastDeal;
     std::vector<SSendJob> takenInRound;
+    bool exiting;
 };
 
 

@@ -12,8 +12,7 @@
 #include "functional"
 #include "string"
 
-using IOWorkerExitCb = std::function<void(int)>;
-using IOWorkerSysErrCb = std::function<void(errInfo info)>;
+using IOWorkerExitCb = std::function<void(ErrArr, int, Side)>;
 
 class IOWorker {
 public:
@@ -32,7 +31,8 @@ public:
             int id,
             int sock_fd,
             IOWorkerExitCb exit_callback,
-            IOWorkerSysErrCb error_callback
+            int mainSockErr,
+            Side side
         );
 
 protected:
@@ -46,9 +46,9 @@ protected:
     const int pipe_fd;
     JobQueue jobQueue;
     IOWorkerExitCb exitCb;
-    IOWorkerSysErrCb errCb;
-    std::string err;
-    int err_type;
+    ErrArr errs;
+    int mainSockErr;
+    Side side;
 };
 
 using SIOWorker = std::shared_ptr<IOWorker>;

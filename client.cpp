@@ -50,7 +50,7 @@ void Client::run() {
         exit(1);
     }
 
-    ownAddr = getAddrStruct(tcp_sock);
+    ownAddr = getAddrStruct(tcp_sock, proto);
 
     if (connect(tcp_sock, sockAddr, len)) {
         throw std::runtime_error("connect");

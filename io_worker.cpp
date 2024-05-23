@@ -18,7 +18,8 @@ IOWorker::IOWorker(
         int id,
         int sock_fd,
         IOWorkerExitCb exit_callback,
-        IOWorkerSysErrCb error_callback
+        int mainSockErr,
+        Side side
         ) :
     id(id),
     terminate(false),
@@ -26,9 +27,9 @@ IOWorker::IOWorker(
     pipe_fd(pipe_fd),
     jobQueue(),
     exitCb(std::move(exit_callback)),
-    errCb(std::move(error_callback)),
-    err(),
-    err_type(IO_ERR_NOERR)
+    errs(),
+    mainSockErr(mainSockErr),
+    side(side)
 {}
 
 void IOWorker::newJob(SSendJob job) {
@@ -52,64 +53,61 @@ void IOWorker::run() {
         int poll_out = poll(poll_fds, 2, 1000);
         if (poll_out == 0) continue;
         if (poll_out < 0) {
-            err = "poll";
-            err_type = IO_ERR_EXTERNAL;
-            informAboutError();
+            errs.emplace_back("poll", errno, mainSockErr);
             terminate = true;
-            continue;
+            break;
         }
         else {
             if (poll_fds[1].revents & POLLIN) {
                 char msg;
                 ssize_t read_len = read(pipe_fd, &msg, 1);
                 if (read_len < 0) {
-                    err = "read";
-                    err_type = IO_ERR_INTERNAL;
-                    informAboutError();
-                    terminate = true;
+                    errs.emplace_back("read", errno, IO_ERR_INTERNAL);
+                    break;
                 }
-                else {
+                else
                     // new job or exit order
                     while (jobQueue.hasNextJob()) {
                         SSendJob sJob = jobQueue.popNextJob();
                         std::string payload = sJob->genMsg();
                         ssize_t sent_len = writeN(main_fd, (void *) payload.c_str(), payload.size());
                         if (sent_len < 0) {
-                            err = "write";
-                            err_type = IO_ERR_EXTERNAL;
-                            informAboutError();
+                            errs.emplace_back("write", errno, mainSockErr);
                             terminate = true;
+                            break;
                         }
-                    }
+                    }{
                     if (jobQueue.hasKillOrder()) {
                         terminate = true;
                         break;
                     }
+                    if (terminate) break;
                 }
             }
             else if (poll_fds[1].revents & (POLLERR | POLLHUP | POLLNVAL)) {
-                err = "pipe";
-                err_type = IO_ERR_INTERNAL;
-                informAboutError();
+                errs.emplace_back("pipe", errno, IO_ERR_INTERNAL);
                 terminate = true;
+                break;
             }
             else if (poll_fds[0].revents & POLLIN) {
-                pollAction();
+                try {
+                    pollAction();
+                } catch (std::exception &e) {
+                    terminate = true;
+                    break;
+                }
             }
             else if (poll_fds[0].revents & (POLLERR | POLLHUP | POLLNVAL)) {
-                err = "socket";
-                err_type = IO_ERR_EXTERNAL;
+                errs.emplace_back("socket", errno, mainSockErr);
                 informAboutError();
                 terminate = true;
             }
         }
     }
-    quitAction();
-    exitCb(id);
+    exitCb(errs, id, side);
 }
 
 void IOWorker::informAboutError() {
-    errCb({err, errno, err_type});
 }
 
 void IOWorker::halt() {
