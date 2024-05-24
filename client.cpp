@@ -118,7 +118,7 @@ void Client::run() {
                 std::cerr << "poll - tcp";
             }
             else if (poll_fds[0].revents & POLLIN) {
-                std::string msg;
+                std::string msg; //todo make breakpoint here and shit happens
                 try {
                     msg = readUntilRN(tcp_sock);
                 } catch (std::runtime_error &e) {
@@ -153,6 +153,7 @@ void Client::run() {
                 }
                 else if (msg_array[0].second == "TAKEN") {
                     _randomDisconnect(tcp_sock);
+                    trickNo = atoi(msg_array[1].second.c_str());
                     Side s = (Side) msg_array[1].second.at(0);
                     Table t;
                     for (int i = 2 ; i < 6; i++) t.push_back(Card::fromString(msg_array[i].second));

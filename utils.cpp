@@ -180,8 +180,14 @@ Side nxtSide(const Side &s) {
     return N;
 }
 
+void dummy(int){}
+
 void ignoreBrokenPipe() {
-    signal(SIGPIPE, SIG_IGN);
+    struct sigaction new_action;
+    sigemptyset(&new_action.sa_mask);
+    new_action.sa_flags = 0;
+    new_action.sa_handler = dummy;
+    sigaction(SIGPIPE, &new_action, nullptr);
 }
 
 void rmIntersection(Hand& hand, const Table& table) {

@@ -37,3 +37,7 @@ void Strategy::reset(Hand new_hand, int mode) {
     hand = new_hand;
     currentMode = mode;
 }
+
+Hand &Strategy::accHand() {
+    return hand;
+}

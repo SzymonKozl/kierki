@@ -126,6 +126,7 @@ resp_array parse_msg(std::string msg, bool server_side) {
                     }
                     res.emplace_back("rn", msg.substr(5, itr - 4));
                     res.emplace_back("type", "TAKEN");
+                    std::reverse(res.begin(), res.end());
                     break;
                 case 7:
                     res.emplace_back("type", "SCORE");

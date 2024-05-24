@@ -49,7 +49,7 @@ private:
     int exitCode;
     int playersConnected;
     net_address own_addr;
-    SSendJob lastDeal;
+    table_state lastDeal;
     std::vector<SSendJob> takenInRound;
     bool exiting;
 };

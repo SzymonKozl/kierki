@@ -123,11 +123,12 @@ void Server::clearTmpPenalties() {
 }
 
 void Server::prepareRound() {
-    auto& [mode, init_state, starting] = gameScenario[roundNumber];
+    auto [mode, init_state, starting] = gameScenario[roundNumber];
     roundMode = mode;
     hands = init_state;
     nextMove = starting;
     trickNo = 1;
+    takenInRound.clear();
 }
 
 void Server::playerTricked(Side side, Card card, int trickNoArg) {
@@ -146,8 +147,10 @@ void Server::playerTricked(Side side, Card card, int trickNoArg) {
         penaltiesRound[taker] += penalty;
         SSendJob msgTaken = std::static_pointer_cast<SendJob>(std::make_shared<SendJobTaken>(table, taker, trickNoArg));
         trickNoArg ++;
+        trickNo = trickNoArg;
         table.clear();
         for (Side s: sides_) workerMgr.sendJob(msgTaken, activeSides[s]);
+        takenInRound.push_back(msgTaken);
         if (trickNoArg == TRICKS_PER_ROUND + 1) {
             updatePenalties();
             SSendJob msgScore = std::static_pointer_cast<SendJob>(std::make_shared<SendJobScore>(penaltiesRound));
@@ -166,6 +169,7 @@ void Server::playerTricked(Side side, Card card, int trickNoArg) {
                 return;
             }
             prepareRound();
+            lastDeal = hands;
             for (Side s: sides_) {
                 SSendJob msgDeal = std::static_pointer_cast<SendJob>(std::make_shared<SendDealJob>(roundMode, nextMove, hands[s]));
                 workerMgr.sendJob(msgDeal, activeSides[s]);
@@ -177,12 +181,12 @@ void Server::playerTricked(Side side, Card card, int trickNoArg) {
 
 void Server::playerIntro(Side side, int workerIx) {
     MutexGuard lock(gameStateMutex);
-    std::cout << "ugabuga\n";
     if (activeSides[side] == -1) {
         // accepting new client
         activeSides[side] = workerIx;
         playersConnected ++;
-        if (playersConnected == 4 && lastDeal.use_count() == 0) {
+        if (playersConnected == 4 && lastDeal.empty()) {
+            lastDeal = hands;
             for (Side s: sides_) {
                 SSendJob msgDeal = std::static_pointer_cast<SendJob>(std::make_shared<SendDealJob>(roundMode, nextMove, hands[s]));
                 workerMgr.sendJob(msgDeal, activeSides[s]);
@@ -190,8 +194,9 @@ void Server::playerIntro(Side side, int workerIx) {
             SSendJob msgTrick = std::static_pointer_cast<SendJob>(std::make_shared<SendJobTrick>(table, trickNo));
             workerMgr.sendJob(msgTrick, activeSides[nextMove]);
         }
-        else if (lastDeal.get() != nullptr) {
-            workerMgr.sendJob(lastDeal, workerIx);
+        else if (!lastDeal.empty()) {
+            SSendJob msgDeal = std::static_pointer_cast<SendJob>(std::make_shared<SendDealJob>(roundMode, nextMove, lastDeal[side]));
+            workerMgr.sendJob(msgDeal, activeSides[side]);
             for (auto &msg: takenInRound) {
                 workerMgr.sendJob(msg, workerIx);
             }
