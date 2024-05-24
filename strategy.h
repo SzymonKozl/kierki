@@ -13,6 +13,7 @@ public:
     Strategy(Hand hand, int mode);
     void reset(Hand hand, int mode);
     Card nextMove(Table const& t);
+    Hand& accHand();
 private:
     Hand hand;
     int currentMode;

@@ -7,7 +7,7 @@
 #include <utility>
 
 Player::Player()
-{}
+= default;
 
 void Player::setup(putCardCb putCardCallback, cardNeededCb cardNeededCallback) {
     putCb = std::move(putCardCallback);

@@ -20,14 +20,21 @@ PlayerAuto::PlayerAuto():
 void PlayerAuto::scoreMsg(const std::unordered_map<Side, int> scores, bool total) {}
 
 void PlayerAuto::trickMsg(int trickNo, const Table &table) {
-    putCb(strategy.nextMove(table));
+    Card c = strategy.nextMove(table);
+    lastCardGiven = std::make_shared<Card>(c.getValue(), c.getColor());
+    putCb(c);
 }
 
 void PlayerAuto::dealMsg(int trickMode, Hand hand) {
     strategy.reset(hand, trickMode);
 }
 
-void PlayerAuto::wrongMsg(int trickNo) {}
+void PlayerAuto::wrongMsg(int trickNo) {
+    if (lastCardGiven.use_count()) {
+        strategy.accHand().push_back(*lastCardGiven);
+        lastCardGiven.reset();
+    }
+}
 
 void PlayerAuto::anyCmd(std::string msg) {
 
@@ -43,6 +50,6 @@ void PlayerAuto::setTrickCb(chooseCardCb &&trick_callback) {
 
 void PlayerAuto::takenMsg(Side side, const Table &cards, bool apply) {
     if (apply) {
-        rmIntersection(hand, cards);
+        rmIntersection(strategy.accHand(), cards);
     }
 }

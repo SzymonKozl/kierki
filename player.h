@@ -26,7 +26,7 @@ public:
     virtual void anyMsg(Message message) = 0;
     virtual void anyCmd(std::string msg) = 0;
 protected:
-    Hand hand;
+    sCard lastCardGiven;
     putCardCb putCb;
     cardNeededCb checkCardCb;
 };
