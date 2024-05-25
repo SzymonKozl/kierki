@@ -22,6 +22,7 @@ public:
             int id,
             int sock_fd,
             IOWorkerExitCb exit_callback,
+            IOWorkerPipeCloseCb pipe_close_callback,
             IOWorkerIntroCb intro_callback,
             IOWrokerTrickCb trick_callback,
             net_address client_addr,

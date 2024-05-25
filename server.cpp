@@ -54,6 +54,7 @@ void Server::run() {
     workerMgr.spawnNewWorker<IOWorkerConnect>(
         tcp_listen_sock,
         [this](const ErrArr& arr, int ix, Side side) { this->grandExitCallback(arr, ix, side);},
+        [this](int ix) {this->workerMgr.clearPipes(ix);},
         [this](int fd, net_address conn_addr) { this->forwardConnection(fd, std::move(conn_addr));}
     );
     workerMgr.waitForClearing();
@@ -259,6 +260,7 @@ void Server::forwardConnection(int fd, net_address conn_addr) {
     workerMgr.spawnNewWorker<IOWorkerHandler>(
             fd,
             [this] (const ErrArr& errs, int ix, Side side) { this->grandExitCallback(errs, ix, side);},
+            [this] (int ix) {this->workerMgr.clearPipes(ix);},
             [this] (Side s, int ix) { this->playerIntro(s, ix);},
             [this] (int t, Side s, const Card& c) { this->playerTricked(s, c, t);},
             std::move(conn_addr),

@@ -18,6 +18,7 @@ IOWorker::IOWorker(
         int id,
         int sock_fd,
         IOWorkerExitCb exit_callback,
+        IOWorkerPipeCloseCb pipe_close_callback,
         int mainSockErr,
         Side side
         ) :
@@ -27,9 +28,11 @@ IOWorker::IOWorker(
     pipe_fd(pipe_fd),
     jobQueue(),
     exitCb(std::move(exit_callback)),
+    pipeCb(std::move(pipe_close_callback)),
     errs(),
     mainSockErr(mainSockErr),
-    side(side)
+    side(side),
+    closedFd(false)
 {}
 
 void IOWorker::newJob(SSendJob job) {
@@ -104,6 +107,7 @@ void IOWorker::run() {
             }
         }
     }
+    pipeCb(id);
     exitCb(errs, id, side);
 }
 
@@ -116,4 +120,10 @@ void IOWorker::halt() {
 
 void IOWorker::unhalt() {
     jobQueue.setStopped(false);
+}
+
+IOWorker::~IOWorker() {
+    if (!closedFd) {
+        if (close(main_fd)) std::cerr << "error on close: " << errno << std:: endl << std::flush;
+    }
 }

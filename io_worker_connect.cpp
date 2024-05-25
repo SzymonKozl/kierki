@@ -18,9 +18,10 @@ IOWorkerConnect::IOWorkerConnect(
         int id,
         int sock_fd,
         IOWorkerExitCb exit_callback,
+        IOWorkerPipeCloseCb pipe_close_callback,
         IOWorkerConnectionMadeCb accept_callback
         ):
-        IOWorker(pipe_fd, id, sock_fd, std::move(exit_callback), IO_ERR_INTERNAL, SIDE_NULL_),
+        IOWorker(pipe_fd, id, sock_fd, std::move(exit_callback), std::move(pipe_close_callback), IO_ERR_INTERNAL, SIDE_NULL_),
         accCb(std::move(accept_callback))
 {}
 

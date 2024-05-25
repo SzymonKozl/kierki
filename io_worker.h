@@ -13,6 +13,7 @@
 #include "string"
 
 using IOWorkerExitCb = std::function<void(ErrArr, int, Side)>;
+using IOWorkerPipeCloseCb = std::function<void(int)>;
 
 class IOWorker {
 public:
@@ -31,9 +32,12 @@ public:
             int id,
             int sock_fd,
             IOWorkerExitCb exit_callback,
+            IOWorkerPipeCloseCb pipe_close_callback,
             int mainSockErr,
             Side side
         );
+
+    ~IOWorker();
 
 protected:
     virtual void pollAction() = 0;
@@ -46,9 +50,11 @@ protected:
     const int pipe_fd;
     JobQueue jobQueue;
     IOWorkerExitCb exitCb;
+    IOWorkerPipeCloseCb pipeCb;
     ErrArr errs;
     int mainSockErr;
     Side side;
+    bool closedFd;
 };
 
 using SIOWorker = std::shared_ptr<IOWorker>;

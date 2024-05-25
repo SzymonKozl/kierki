@@ -132,7 +132,7 @@ int Client::run() {
                             Side starting = (Side) msg_array[2].second.at(0);
                             player.dealMsg(type, hand, starting);
                         }
-                        else if (msg_array[0].second == "TRICK_S") {
+                        else if (msg_array[0].second == "TRICK_S") {`
                             stage = AFTER_TRICK;
                             waitingForCard = true;
                             trickNo = atoi(msg_array[1].second.c_str());
