@@ -20,6 +20,7 @@ public:
             int id,
             int sock_fd,
             IOWorkerExitCb exit_callback,
+            IOWorkerPipeCloseCb pipe_close_callback,
             IOWorkerConnectionMadeCb accept_callback
             );
 private:

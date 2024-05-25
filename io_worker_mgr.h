@@ -29,6 +29,7 @@ public:
     void eraseWorker(int ix);
     void waitForClearing();
     void releaseCleaner();
+    void clearPipes(int ix);
     explicit IOWorkerMgr(IOWorkerMgrPipeCb &&pipeCb);
     ~IOWorkerMgr();
 private:

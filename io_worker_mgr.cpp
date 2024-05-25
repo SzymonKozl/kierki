@@ -108,3 +108,9 @@ void IOWorkerMgr::releaseCleaner() {
     MutexGuard lock(threadsStructuresMutex);
     finishFlag = true;
 }
+
+void IOWorkerMgr::clearPipes(int ix) {
+    MutexGuard lock(threadsStructuresMutex);
+    if (close(pipes[ix].first)) pipeCb({"close", 0, IO_ERR_EXTERNAL});
+    if (close(pipes[ix].second)) pipeCb({"close", 0, IO_ERR_EXTERNAL});
+}

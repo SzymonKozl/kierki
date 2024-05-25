@@ -210,6 +210,7 @@ int Client::run() {
             }
         }
     }
+    close(tcp_sock);
     return exitFlag;
 }
 
