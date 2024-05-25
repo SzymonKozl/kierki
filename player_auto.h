@@ -22,13 +22,16 @@ public:
     PlayerAuto();
 
     void trickMsg(int trickNo, const Table& table) override;
-    void takenMsg(Side side, const Table& cards, bool apply) override;
-    void scoreMsg(const score_map scores, bool total) override;
-    void dealMsg(int trickMode, Hand hand) override;
+    void takenMsg(Side side, const Table &cards, int trickNo, bool apply) override;
+    void scoreMsg(score_map scores, bool total) override;
+    void dealMsg(int trickMode, const Hand& hand, Side starting) override;
     void wrongMsg(int trickNo) override;
     void anyMsg(Message message) override;
     void anyCmd(std::string msg) override;
     void setTrickCb(chooseCardCb &&trick_callback);
+
+    void busyMsg(const std::vector<Side> &taken) override;
+
 private:
     Strategy strategy;
     chooseCardCb trickCb;

@@ -4,6 +4,8 @@ project(kierki)
 set(CMAKE_CXX_STANDARD 20)
 
 set(CLIENT_DEPS strategy.cpp strategy.h player.h player.cpp player_auto.cpp player_auto.h client.cpp client.h
+        player_console.cpp
+        player_console.h
 )
 set(SERVER_DEPS io_worker.cpp io_worker.h io_worker_mgr.cpp io_worker_mgr.h io_worker_connect.cpp io_worker_client.h io_worker_handler.cpp io_worker_handler.h job_queue.cpp job_queue.h
         server.cpp

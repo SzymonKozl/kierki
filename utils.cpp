@@ -8,6 +8,7 @@
 #include "common_types.h"
 
 #include "fstream"
+#include "iostream"
 #include "string"
 #include "vector"
 #include "unistd.h"
@@ -203,4 +204,8 @@ void rmCardIfPresent(Hand& hand, const Card& card) {
             return;
         }
     }
+}
+
+std::ostream& operator<<(std::ostream & os, const Side & s) {
+    return os << static_cast<char>(s);
 }

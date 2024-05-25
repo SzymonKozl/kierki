@@ -9,6 +9,7 @@
 
 #include "unistd.h"
 #include "string"
+#include "iostream"
 #include "arpa/inet.h"
 #include "sys/socket.h"
 
@@ -32,5 +33,17 @@ void ignoreBrokenPipe();
 void rmIntersection(Hand& hand, const Table& table);
 
 void rmCardIfPresent(Hand& hand, const Card& card);
+
+template<typename T> requires requires (const T a) {
+    std::cout << a;
+}
+inline void printList(std::vector<T> const& objects) {
+    for (size_t i = 0; i < objects.size(); i ++) {
+        std::cout << objects.at(i);
+        if (i != objects.size() - 1) std::cout << ", ";
+    }
+}
+
+std::ostream& operator<<(std::ostream & os, const Side & s);
 
 #endif //KIERKI_UTILS_H

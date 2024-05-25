@@ -34,6 +34,8 @@ public:
 
     Card& operator=(Card const& other);
 
+    friend std::ostream& operator<< (std::ostream& stream, const Card& card);
+
 private:
     static const std::vector<char> AVAILABLE_COLORS;
     static const std::vector<std::string> AVAILABLE_VALUES;
@@ -41,6 +43,8 @@ private:
     color col;
     int true_val;
 };
+
+
 
 using sCard = std::shared_ptr<Card>;
 

@@ -14,12 +14,13 @@
 class Client {
 public:
     Client(Player &player, net_address connectTo, Side side, sa_family_t proto);
-    void run();
+    int run();
     void chooseCard(const Card& c);
     void sendMessage(const SSendJob& job) const;
     bool isWaitingForCard() const noexcept;
 private:
     static int makeConnection(sa_family_t proto);
+    void printErr(const std::string& call);
 
     int tcp_sock;
     Player &player;
@@ -31,6 +32,7 @@ private:
     Side side;
     int trickNo;
     sa_family_t proto;
+    int exitFlag;
 };
 
 #endif //KIERKI_CLIENT_H

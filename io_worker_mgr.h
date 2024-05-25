@@ -50,7 +50,7 @@ private:
 
 template<class T, class ...Args>
 requires std::is_base_of_v<IOWorker, T> && std::constructible_from<T, int, int, Args...>
-int IOWorkerMgr::spawnNewWorker(Args ...args) {
+inline int IOWorkerMgr::spawnNewWorker(Args ...args) {
     MutexGuard lock(threadsStructuresMutex);
     int ix = nextIx++;
     int pipe_fd[2];
