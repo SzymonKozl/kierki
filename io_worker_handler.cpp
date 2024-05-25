@@ -21,12 +21,13 @@ IOWorkerHandler::IOWorkerHandler(
         int id,
         int sock_fd,
         IOWorkerExitCb exit_callback,
+        IOWorkerPipeCloseCb pipe_close_callback,
         IOWorkerIntroCb intro_callback,
         IOWrokerTrickCb trick_callback,
         net_address client_addr,
         net_address own_addr
 ):
-        IOWorker(pipe_fd, id, sock_fd, std::move(exit_callback), IO_ERR_EXTERNAL, SIDE_NULL_),
+        IOWorker(pipe_fd, id, sock_fd, std::move(exit_callback), std::move(pipe_close_callback), IO_ERR_EXTERNAL, SIDE_NULL_),
         logger(std::cout, false),
         trickCb(std::move(trick_callback)),
         introCb(std::move(intro_callback)),
