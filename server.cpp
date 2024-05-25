@@ -21,7 +21,7 @@
 #include "sys/socket.h"
 #include "arpa/inet.h"
 
-Server::Server(game_scenario &&scenario):
+Server::Server(game_scenario &&scenario, uint16_t port, int timeout):
     gameScenario(scenario),
     workerMgr([&](ErrInfo info) { handleSysErr(info);}),
     activeSides(),
@@ -35,9 +35,11 @@ Server::Server(game_scenario &&scenario):
     table(),
     exitCode(0),
     playersConnected(0),
+    own_addr(port, ""),
     lastDeal(),
     takenInRound(),
-    exiting(false)
+    exiting(false),
+    timeout(timeout)
 {
     for (Side s: {W, E, S, N}) {
         activeSides[s] = -1;
@@ -48,7 +50,7 @@ Server::Server(game_scenario &&scenario):
 
 void Server::run() {
     prepareRound();
-    int tcp_listen_sock = makeTCPSock(9009);
+    int tcp_listen_sock = makeTCPSock(own_addr.first);
     workerMgr.spawnNewWorker<IOWorkerConnect>(
         tcp_listen_sock,
         [this](const ErrArr& arr, int ix, Side side) { this->grandExitCallback(arr, ix, side);},
@@ -236,19 +238,16 @@ int Server::makeTCPSock(uint16_t port) {
     if (fd < 0) {
         throw std::runtime_error("socket");
     }
-    if (port) {
-        sockaddr_in6 server_address;
-        server_address.sin6_family = AF_INET6;
-        server_address.sin6_addr = in6addr_any;
-        server_address.sin6_port = htons(port);
-        if (bind(fd,(const sockaddr *) &server_address, sizeof server_address)) {
-            throw std::runtime_error("bind");
-        }
+    sockaddr_in6 server_address;
+    server_address.sin6_family = AF_INET6;
+    server_address.sin6_addr = in6addr_any;
+    server_address.sin6_port = htons(port);
+    if (bind(fd,(const sockaddr *) &server_address, sizeof server_address)) {
+        throw std::runtime_error("bind");
     }
-
     own_addr = getAddrStruct(fd, AF_INET6);
 
-    if (listen(fd, 10)) {
+    if (listen(fd, TCP_QUEUE)) {
         throw std::runtime_error("listen");
     }
 

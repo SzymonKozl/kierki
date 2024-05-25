@@ -11,20 +11,20 @@
 #include "regex"
 #include "string_view"
 
-#define _CARD "(([2-9]|10|J|Q|K|A)(C|D|H|S))"
-#define _SIDE "[NSEW]"
-#define _RN "([1-9]|1[0123])"
+#define CARD_ "(([2-9]|10|J|Q|K|A)(C|D|H|S))"
+#define SIDE_ "[NSEW]"
+#define RN_ "([1-9]|1[0123])"
 
 constexpr std::string_view patterns[] = {
-        "IAM" _SIDE,
-        "BUSY" _SIDE "{1,4}",
-        "DEAL[1-7]" _SIDE _CARD "{13}",
-        "TRICK" _RN _CARD "{0,3}",
-        "TRICK" _RN _CARD,
-        "WRONG" _RN,
-        "TAKEN" _RN _CARD "{4}" _SIDE,
-        "SCORE(" _SIDE "(0|([1-9][0-9]*))){4}",
-        "TOTAL(" _SIDE "(0|([1-9][0-9]*))){4}"
+        "IAM" SIDE_,
+        "BUSY" SIDE_ "{1,4}",
+        "DEAL[1-7]" SIDE_ CARD_ "{13}",
+        "TRICK" RN_ CARD_ "{0,3}",
+        "TRICK" RN_ CARD_,
+        "WRONG" RN_,
+        "TAKEN" RN_ CARD_ "{4}" SIDE_,
+        "SCORE(" SIDE_ "(0|([1-9][0-9]*))){4}",
+        "TOTAL(" SIDE_ "(0|([1-9][0-9]*))){4}"
 };
 
 constexpr int PATTERN_NO = 9;
@@ -42,17 +42,16 @@ resp_array parse_msg(std::string msg, bool server_side) {
         }
         reg = std::regex(std::string(patterns[i]));
         if (std::regex_match(msg, reg)) {
-            size_t itr;
-            int start;
+            size_t itr, start;
             switch (i) {
                 case 0:
-                    res.push_back(std::make_pair("type", "IAM"));
-                    res.push_back(std::make_pair("side", msg.substr(3,1)));
+                    res.emplace_back("type", "IAM");
+                    res.emplace_back("side", msg.substr(3,1));
                     break;
                 case 1:
-                    res.push_back(std::make_pair("type", "BUSY"));
+                    res.emplace_back("type", "BUSY");
                     for (size_t j = 4; j < msg.size(); j ++) {
-                        res.push_back(std::make_pair("side", msg.substr(j, 1)));
+                        res.emplace_back("side", msg.substr(j, 1));
                     }
                     break;
                 case 2:
@@ -136,6 +135,7 @@ resp_array parse_msg(std::string msg, bool server_side) {
                         start = itr;
                         while (itr + 1 < msg.size() && msg.at(itr + 1) >= '0' && msg.at(itr + 1) <= '9') itr ++;
                         res.emplace_back("score", msg.substr(start, itr - start + 1));
+                        itr ++;
                     }
                     break;
                 case 8:
@@ -146,6 +146,7 @@ resp_array parse_msg(std::string msg, bool server_side) {
                         start = itr;
                         while (itr + 1 < msg.size() && msg.at(itr + 1) >= '0' && msg.at(itr + 1) <= '9') itr ++;
                         res.emplace_back("score", msg.substr(start, itr - start + 1));
+                        itr ++;
                     }
                     break;
             }

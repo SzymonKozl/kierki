@@ -10,6 +10,7 @@
 
 #include "unordered_map"
 #include "functional"
+#include "vector"
 
 using putCardCb = std::function<void(Card)>;
 using cardNeededCb = std::function<bool()>;
@@ -19,10 +20,11 @@ public:
     Player();
     void setup(putCardCb putCardCallback, cardNeededCb cardNeededCallback);
     virtual void trickMsg(int trickNo, const Table& table) = 0;
-    virtual void takenMsg(Side side, const Table& cards, bool apply) = 0;
-    virtual void scoreMsg(const score_map scores, bool total) = 0;
-    virtual void dealMsg(int trickMode, Hand hand) = 0;
+    virtual void takenMsg(Side side, const Table &cards, int trickNo, bool apply) = 0;
+    virtual void scoreMsg(score_map scores, bool total) = 0;
+    virtual void dealMsg(int trickMode, const Hand& hand, Side starting) = 0;
     virtual void wrongMsg(int trickNo) = 0;
+    virtual void busyMsg(const std::vector<Side>& taken) = 0;
     virtual void anyMsg(Message message) = 0;
     virtual void anyCmd(std::string msg) = 0;
 protected:

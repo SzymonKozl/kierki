@@ -24,7 +24,7 @@
 #include "arpa/inet.h"
 #include "random"
 
-constexpr char MSG_SEP = '\r';
+constexpr char MSG_SEP = '\n';
 
 enum GameStage {
     PRE,
@@ -44,8 +44,7 @@ void _randomDisconnect(int fd) {
         exit(0);
     }
 }
-
-void Client::run() {
+int Client::run() {
     GameStage stage = PRE;
     fcntl(0, F_SETFL, fcntl(0, F_GETFL) | O_NONBLOCK);
     std::string nextCmd;
@@ -106,14 +105,21 @@ void Client::run() {
             }
             else if (poll_fds[1].revents & POLLIN) {
                 char c;
-                while (read(tcp_sock, &c, 1)) {
+                ssize_t r;
+                while ((r = read(0, &c, 1)) == 1) {
                     if (c == MSG_SEP) {
                         player.anyCmd(nextCmd);
                         nextCmd = "";
                     }
                     else nextCmd += c;
                 }
-
+                if (r == -1) {
+                    if (errno != EAGAIN && errno != EWOULDBLOCK) {
+                        terminate = true;
+                        exitFlag = 1;
+                        break;
+                    }
+                }
             }
             else if (poll_fds[0].revents & (POLLERR | POLLHUP | POLLNVAL)) {
                 terminate = true;
@@ -123,7 +129,7 @@ void Client::run() {
                 char c;
                 ssize_t r;
                 std::string msg;
-                while ((r = read(tcp_sock, &c, 1)) == 1) {
+                while ((r = recv(tcp_sock, &c, 1, MSG_DONTWAIT)) == 1) {
                     nextMsg += c;
                     if (c == '\n') { // new msg
                         msg = nextMsg.substr(0, nextMsg.size() - 2);
@@ -138,7 +144,8 @@ void Client::run() {
                             auto type = (RoundType) (msg_array[1].second.at(0) - '0');
                             Hand hand;
                             for (int i = 3; i < 16; i ++) hand.push_back(Card::fromString(msg_array[i].second));
-                            player.dealMsg(type, hand);
+                            Side starting = (Side) msg_array[2].second.at(0);
+                            player.dealMsg(type, hand, starting);
                         }
                         else if (msg_array[0].second == "TRICK_S") {
                             _randomDisconnect(tcp_sock);
@@ -153,10 +160,10 @@ void Client::run() {
                         }
                         else if (msg_array[0].second == "TAKEN") {
                             trickNo = atoi(msg_array[1].second.c_str());
-                            Side s = (Side) msg_array[1].second.at(0);
+                            Side s = (Side) msg_array[msg_array.size() - 1].second.at(0);
                             Table t;
                             for (int i = 2 ; i < 6; i++) t.push_back(Card::fromString(msg_array[i].second));
-                            player.takenMsg(s, t, stage == AFTER_FIRST_DEAL);
+                            player.takenMsg(s, t, trickNo, stage == AFTER_FIRST_DEAL);
                         }
                         else if (msg_array[0].second == "SCORE" || msg_array[0].second == "TOTAL") {
                             if (msg_array[0].second == "SCORE" ) stage = AFTER_SCORE;
@@ -174,19 +181,36 @@ void Client::run() {
                         else if (msg_array[0].second == "WRONG") {
                             _randomDisconnect(tcp_sock);
                             trickNo = atoi(msg_array[1].second.c_str());
+                            waitingForCard = true;
                             player.wrongMsg(trickNo);
+                        }
+                        else if (msg_array[0].second == "BUSY") {
+                            std::vector<Side> taken;
+                            for (size_t j = 1; j < msg_array.size(); j ++) {
+                                taken.push_back((Side) msg_array[j].second.at(0));
+                            }
+                            player.busyMsg(taken);
+                            terminate = true;
                         }
                     }
                 }
                 if (r < 0) {
-                    errno = 0;
+                    if (errno == EWOULDBLOCK || errno == EAGAIN) {
+                        errno = 0;
+                    }
+                    else {
+                        exitFlag = 1;
+                        terminate = true;
+                    }
                 }
                 else if (!r) {
-                    exit(-1);
+                    exitFlag = 0;
+                    terminate = true;
                 }
             }
         }
     }
+    return exitFlag;
 }
 
 int Client::makeConnection(sa_family_t proto) {
@@ -216,7 +240,8 @@ Client::Client(Player &player, net_address connectTo, Side side, sa_family_t pro
         lastGivenCard("3", COLOR_H),
         side(side),
         trickNo(1),
-        proto(proto)
+        proto(proto),
+        exitFlag(0)
 {}
 
 void Client::sendMessage(const SSendJob& job) const {
@@ -229,4 +254,8 @@ void Client::sendMessage(const SSendJob& job) const {
 
 bool Client::isWaitingForCard() const noexcept {
     return waitingForCard;
+}
+
+void Client::printErr(const std::string& call) {
+    std::cout << "System error on call " << call << ". Errno=" << errno << std::endl;
 }

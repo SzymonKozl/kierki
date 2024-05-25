@@ -77,4 +77,8 @@ bool Card::operator>=(const Card &other) const {
     return !(*this < other);
 }
 
+std::ostream &operator<<(std::ostream &stream, const Card &card) {
+    return stream << card.getValue() << (char) card.getColor();
+}
+
 Card &Card::operator=(const Card &other) = default;

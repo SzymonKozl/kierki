@@ -17,7 +17,7 @@ using active_map = std::unordered_map<Side, int>;
 
 class Server {
 public:
-    explicit Server(game_scenario &&scenario);
+    explicit Server(game_scenario &&scenario, uint16_t port, int timeout);
     void run();
 private:
     bool furtherMovesNeeded() noexcept;
@@ -52,6 +52,7 @@ private:
     table_state lastDeal;
     std::vector<SSendJob> takenInRound;
     bool exiting;
+    int timeout;
 };
 
 

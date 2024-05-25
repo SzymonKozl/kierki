@@ -25,7 +25,7 @@ void PlayerAuto::trickMsg(int trickNo, const Table &table) {
     putCb(c);
 }
 
-void PlayerAuto::dealMsg(int trickMode, Hand hand) {
+void PlayerAuto::dealMsg(int trickMode, const Hand& hand, Side starting) {
     strategy.reset(hand, trickMode);
 }
 
@@ -48,8 +48,12 @@ void PlayerAuto::setTrickCb(chooseCardCb &&trick_callback) {
     trickCb = std::move(trick_callback);
 }
 
-void PlayerAuto::takenMsg(Side side, const Table &cards, bool apply) {
+void PlayerAuto::takenMsg(Side side, const Table &cards, int trickNo, bool apply) {
     if (apply) {
         rmIntersection(strategy.accHand(), cards);
     }
+}
+
+void PlayerAuto::busyMsg(const std::vector<Side> &taken) {
+
 }
