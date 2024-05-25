@@ -186,7 +186,7 @@ int Client::run() {
                     }
                 }
                 else if (!r) {
-                    exitFlag = 1;
+                    exitFlag = 0;
                     terminate = true;
                 }
             }

@@ -9,4 +9,7 @@ constexpr int IO_ERR_INTERNAL = 11;
 constexpr int IO_ERR_EXTERNAL = -12;
 constexpr int IO_ERR_NOERR = - 10;
 
+constexpr int DEFAULT_TIMEOUT = 5;
+constexpr int TCP_QUEUE = 10;
+
 #endif //KIERKI_CONSTANTS_H
