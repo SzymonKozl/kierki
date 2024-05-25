@@ -22,7 +22,8 @@ public:
             IOWorkerExitCb exit_callback,
             IOWorkerPipeCloseCb pipe_close_callback,
             IOWorkerConnectionMadeCb accept_callback,
-            Logger& logger
+            Logger& logger,
+            const net_address &ownAddr
             );
 private:
     void pollAction() override;

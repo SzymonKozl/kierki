@@ -36,7 +36,9 @@ public:
             IOWorkerPipeCloseCb pipe_close_callback,
             int mainSockErr,
             Side side,
-            Logger& logger
+            Logger& logger,
+            const net_address &ownAddr,
+            const net_address &clientAddr
         );
 
     ~IOWorker();
@@ -58,6 +60,8 @@ protected:
     Side side;
     bool closedFd;
     Logger& logger;
+    net_address ownAddr;
+    net_address clientAddr;
 };
 
 using SIOWorker = std::shared_ptr<IOWorker>;

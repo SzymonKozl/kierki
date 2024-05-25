@@ -57,7 +57,8 @@ void Server::run() {
         [this](const ErrArr& arr, int ix, Side side) { this->grandExitCallback(arr, ix, side);},
         [this](int ix) {this->workerMgr.clearPipes(ix);},
         [this](int fd, net_address conn_addr) { this->forwardConnection(fd, std::move(conn_addr));},
-        std::ref(msgLogger)
+        std::ref(msgLogger),
+        own_addr
     );
     workerMgr.waitForClearing();
     exit(exitCode);

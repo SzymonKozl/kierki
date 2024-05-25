@@ -20,9 +20,10 @@ IOWorkerConnect::IOWorkerConnect(
         IOWorkerExitCb exit_callback,
         IOWorkerPipeCloseCb pipe_close_callback,
         IOWorkerConnectionMadeCb accept_callback,
-        Logger& logger
+        Logger& logger,
+        const net_address& ownAddr
         ):
-        IOWorker(pipe_fd, id, sock_fd, std::move(exit_callback), std::move(pipe_close_callback), IO_ERR_INTERNAL, SIDE_NULL_, logger),
+        IOWorker(pipe_fd, id, sock_fd, std::move(exit_callback), std::move(pipe_close_callback), IO_ERR_INTERNAL, SIDE_NULL_, logger, ownAddr, {0, ""}),
         accCb(std::move(accept_callback))
 {}
 

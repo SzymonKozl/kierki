@@ -24,16 +24,14 @@ IOWorkerHandler::IOWorkerHandler(
         IOWorkerPipeCloseCb pipe_close_callback,
         IOWorkerIntroCb intro_callback,
         IOWrokerTrickCb trick_callback,
-        net_address client_addr,
-        net_address own_addr,
+        const net_address& clientAddr,
+        const net_address& ownAddr,
         Logger& logger
 ):
-        IOWorker(pipe_fd, id, sock_fd, std::move(exit_callback), std::move(pipe_close_callback), IO_ERR_EXTERNAL, SIDE_NULL_, logger),
+        IOWorker(pipe_fd, id, sock_fd, std::move(exit_callback), std::move(pipe_close_callback), IO_ERR_EXTERNAL, SIDE_NULL_, logger, ownAddr, clientAddr),
         trickCb(std::move(trick_callback)),
         introCb(std::move(intro_callback)),
-        introduced(false),
-        client_addr(std::move(client_addr)),
-        own_addr(std::move(own_addr))
+        introduced(false)
         {}
 
 void IOWorkerHandler::pollAction() {
@@ -49,7 +47,7 @@ void IOWorkerHandler::pollAction() {
         throw std::runtime_error("");
     }
 
-    Message messageObj(client_addr, own_addr, msg);
+    Message messageObj(clientAddr, ownAddr, msg);
     logger.log(messageObj);
 
     resp_array arr = parse_msg(msg, true);
