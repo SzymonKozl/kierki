@@ -224,7 +224,6 @@ void Server::playerDisconnected(Side s, ErrInfo info) {
 }
 
 int Server::makeTCPSock(uint16_t port) {
-    // todo: ivp6 handling
     int fd = socket(AF_INET6, SOCK_STREAM, 0);
     int val = 0;
     if (setsockopt(fd, IPPROTO_IPV6, IPV6_V6ONLY, &val, sizeof val)) {

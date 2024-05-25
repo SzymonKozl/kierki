@@ -38,6 +38,7 @@ void Client::run() {
     GameStage stage = PRE;
     fcntl(0, F_SETFL, fcntl(0, F_GETFL) | O_NONBLOCK);
     std::string nextCmd;
+    std::string nextMsg;
 
     sockaddr_any addr = getIntAddr(serverAddr.second, proto, htons(serverAddr.first));
     sockaddr* sockAddr = (addr.family == AF_INET) ? (sockaddr *)addr.addr.addr_in : (sockaddr *)addr.addr.addr_in6;
@@ -51,6 +52,7 @@ void Client::run() {
         std::cerr << "Error on" << e.what();
         exit(1);
     }
+    //fcntl(tcp_sock, F_SETFL, fcntl(tcp_sock, F_GETFL) | O_NONBLOCK);
 
     ownAddr = getAddrStruct(tcp_sock, proto);
 
@@ -103,59 +105,65 @@ void Client::run() {
                 std::cerr << "poll - tcp";
             }
             else if (poll_fds[0].revents & POLLIN) {
-                std::string msg; //todo make breakpoint here and shit happens
-                try {
-                    msg = readUntilRN(tcp_sock);
-                } catch (std::runtime_error &e) {
-                    if (errno == 0 && stage == AFTER_TOTAL) {
-                        exit(0);
+                char c;
+                ssize_t r;
+                std::string msg;
+                while ((r = read(tcp_sock, &c, 1)) == 1) {
+                    nextMsg += c;
+                    if (c == '\n') { // new msg
+                        msg = nextMsg.substr(0, nextMsg.size() - 2);
+                        nextMsg.clear();
+
+                        Message msgObj(serverAddr, ownAddr, msg);
+                        player.anyMsg(msgObj);
+                        resp_array msg_array = parse_msg(msg, false);
+                        if (msg_array[0].second == "DEAL") {
+                            stage = (stage == PRE) ? AFTER_FIRST_DEAL : AFTER_DEAL;
+                            auto type = (RoundType) (msg_array[1].second.at(0) - '0');
+                            Hand hand;
+                            for (int i = 3; i < 16; i ++) hand.push_back(Card::fromString(msg_array[i].second));
+                            player.dealMsg(type, hand);
+                        }
+                        else if (msg_array[0].second == "TRICK_S") {
+                            stage = AFTER_TRICK;
+                            waitingForCard = true;
+                            trickNo = atoi(msg_array[1].second.c_str());
+                            Table  t;
+                            for (size_t i = 2; i < msg_array.size(); i ++) {
+                                t.push_back(Card::fromString(msg_array[i].second));
+                            }
+                            player.trickMsg(trickNo, t);
+                        }
+                        else if (msg_array[0].second == "TAKEN") {
+                            trickNo = atoi(msg_array[1].second.c_str());
+                            Side s = (Side) msg_array[1].second.at(0);
+                            Table t;
+                            for (int i = 2 ; i < 6; i++) t.push_back(Card::fromString(msg_array[i].second));
+                            player.takenMsg(s, t, stage == AFTER_FIRST_DEAL);
+                        }
+                        else if (msg_array[0].second == "SCORE" || msg_array[0].second == "TOTAL") {
+                            if (msg_array[0].second == "SCORE" ) stage = AFTER_SCORE;
+                            else stage = AFTER_TOTAL;
+                            bool total = msg_array[0].second == "TOTAL";
+                            score_map res;
+                            for (int i = 1; i <= 4; i ++) {
+                                Side side = (Side) msg_array[2 * i - 1].second.at(0);
+                                int score = atoi(msg_array[2 * i].second.c_str());
+                                res[side] = score;
+                            }
+                            player.scoreMsg(res, total);
+                        }
+                        else if (msg_array[0].second == "WRONG") {
+                            trickNo = atoi(msg_array[1].second.c_str());
+                            player.wrongMsg(trickNo);
+                        }
                     }
-                    else {
-                        exit(1);
-                    }
                 }
-                Message msgObj(serverAddr, ownAddr, msg);
-                player.anyMsg(msgObj);
-                resp_array msg_array = parse_msg(msg, false);
-                if (msg_array[0].second == "DEAL") {
-                    stage = (stage == PRE) ? AFTER_FIRST_DEAL : AFTER_DEAL;
-                    auto type = (RoundType) (msg_array[1].second.at(0) - '0');
-                    Hand hand;
-                    for (int i = 3; i < 16; i ++) hand.push_back(Card::fromString(msg_array[i].second));
-                    player.dealMsg(type, hand);
+                if (r < 0) {
+                    errno = 0;
                 }
-                else if (msg_array[0].second == "TRICK_S") {
-                    stage = AFTER_TRICK;
-                    waitingForCard = true;
-                    trickNo = atoi(msg_array[1].second.c_str());
-                    Table  t;
-                    for (size_t i = 2; i < msg_array.size(); i ++) {
-                        t.push_back(Card::fromString(msg_array[i].second));
-                    }
-                    player.trickMsg(trickNo, t);
-                }
-                else if (msg_array[0].second == "TAKEN") {
-                    trickNo = atoi(msg_array[1].second.c_str());
-                    Side s = (Side) msg_array[1].second.at(0);
-                    Table t;
-                    for (int i = 2 ; i < 6; i++) t.push_back(Card::fromString(msg_array[i].second));
-                    player.takenMsg(s, t, stage == AFTER_FIRST_DEAL);
-                }
-                else if (msg_array[0].second == "SCORE" || msg_array[0].second == "TOTAL") {
-                    if (msg_array[0].second == "SCORE" ) stage = AFTER_SCORE;
-                    else stage = AFTER_TOTAL;
-                    bool total = msg_array[0].second == "TOTAL";
-                    score_map res;
-                    for (int i = 1; i <= 4; i ++) {
-                        Side side = (Side) msg_array[2 * i - 1].second.at(0);
-                        int score = atoi(msg_array[2 * i].second.c_str());
-                        res[side] = score;
-                    }
-                    player.scoreMsg(res, total);
-                }
-                else if (msg_array[0].second == "WRONG") {
-                    trickNo = atoi(msg_array[1].second.c_str());
-                    player.wrongMsg(trickNo);
+                else if (!r) {
+                    exit(-1);
                 }
             }
         }
