@@ -20,7 +20,8 @@ IOWorker::IOWorker(
         IOWorkerExitCb exit_callback,
         IOWorkerPipeCloseCb pipe_close_callback,
         int mainSockErr,
-        Side side
+        Side side,
+        Logger& logger
         ) :
     id(id),
     terminate(false),
@@ -32,7 +33,8 @@ IOWorker::IOWorker(
     errs(),
     mainSockErr(mainSockErr),
     side(side),
-    closedFd(false)
+    closedFd(false),
+    logger(logger)
 {}
 
 void IOWorker::newJob(SSendJob job) {

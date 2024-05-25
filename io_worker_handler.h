@@ -26,13 +26,13 @@ public:
             IOWorkerIntroCb intro_callback,
             IOWrokerTrickCb trick_callback,
             net_address client_addr,
-            net_address own_addr
+            net_address own_addr,
+            Logger& logger
             );
 private:
     void pollAction() override;
     void quitAction() override;
 
-    Logger logger;
     IOWrokerTrickCb trickCb;
     IOWorkerIntroCb introCb;
     bool introduced;

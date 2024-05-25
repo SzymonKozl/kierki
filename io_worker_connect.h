@@ -21,7 +21,8 @@ public:
             int sock_fd,
             IOWorkerExitCb exit_callback,
             IOWorkerPipeCloseCb pipe_close_callback,
-            IOWorkerConnectionMadeCb accept_callback
+            IOWorkerConnectionMadeCb accept_callback,
+            Logger& logger
             );
 private:
     void pollAction() override;
