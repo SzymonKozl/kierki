@@ -134,8 +134,7 @@ game_scenario parseScenario(const std::string& filepath) {
     std::fstream in(filepath);
     std::string line;
     std::vector<std::string> lines;
-    while (!in.eof()) {
-        std::getline(in, line);
+    while (std::getline(in, line)) {
         lines.push_back(line);
     }
     size_t ix = 0;
