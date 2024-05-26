@@ -25,19 +25,17 @@ public:
             IOWorkerPipeCloseCb pipe_close_callback,
             IOWorkerIntroCb intro_callback,
             IOWrokerTrickCb trick_callback,
-            net_address client_addr,
-            net_address own_addr
+            const net_address& clientAddr,
+            const net_address& own_addr,
+            Logger& logger
             );
 private:
     void pollAction() override;
     void quitAction() override;
 
-    Logger logger;
     IOWrokerTrickCb trickCb;
     IOWorkerIntroCb introCb;
     bool introduced;
-    net_address client_addr;
-    net_address own_addr;
 };
 
 
