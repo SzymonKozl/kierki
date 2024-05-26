@@ -53,6 +53,7 @@ void Server::run() {
     prepareRound();
     int tcp_listen_sock = makeTCPSock(own_addr.first);
     workerMgr.spawnNewWorker<IOWorkerConnect>(
+        INCOMING_PROXY,
         tcp_listen_sock,
         [this](const ErrArr& arr, int ix, Side side) { this->grandExitCallback(arr, ix, side);},
         [this](int ix) {this->workerMgr.clearPipes(ix);},
@@ -189,6 +190,7 @@ void Server::playerIntro(Side side, int workerIx) {
     if (activeSides[side] == -1) {
         // accepting new client
         activeSides[side] = workerIx;
+        workerMgr.setRole(workerIx, HANDLING_ACTIVE);
         playersConnected ++;
         if (playersConnected == 4 && lastDeal.empty()) {
             lastDeal = hands;
@@ -212,6 +214,7 @@ void Server::playerIntro(Side side, int workerIx) {
         }
     }
     else {
+        workerMgr.setRole(workerIx, HANDLING_DISCARDED);
         std::vector<Side> sidesBusy;
         for (auto entry: activeSides) if (entry.second != -1) sidesBusy.push_back(entry.first);
         SSendJob msgBusy = std::static_pointer_cast<SendJob>(std::make_shared<SendJobBusy>(sidesBusy));
@@ -260,6 +263,7 @@ int Server::makeTCPSock(uint16_t port) {
 void Server::forwardConnection(int fd, net_address conn_addr) {
     MutexGuard lock(gameStateMutex);
     workerMgr.spawnNewWorker<IOWorkerHandler>(
+            HANDLING_UNKNOWN,
             fd,
             [this] (const ErrArr& errs, int ix, Side side) { this->grandExitCallback(errs, ix, side);},
             [this] (int ix) {this->workerMgr.clearPipes(ix);},
@@ -279,7 +283,8 @@ void Server::finalize() {
 void Server::grandExitCallback(const ErrArr& errArr, int workerIx, Side side) {
     MutexGuard lock(gameStateMutex);
     if (exiting) return;
-    if (side != SIDE_NULL_) {
+    WorkerRole role = workerMgr.getRole(workerIx);
+    if (role == HANDLING_ACTIVE) {
         activeSides[side] = -1;
         playersConnected --;
     }

@@ -114,3 +114,16 @@ void IOWorkerMgr::clearPipes(int ix) {
     if (close(pipes[ix].first)) pipeCb({"close", 0, IO_ERR_EXTERNAL});
     if (close(pipes[ix].second)) pipeCb({"close", 0, IO_ERR_EXTERNAL});
 }
+
+void IOWorkerMgr::setRole(int ix, WorkerRole role) {
+    MutexGuard lock(threadsStructuresMutex);
+    if (roles.find(ix) == roles.end()) {
+        throw std::runtime_error("tried to set role for non-existing worker\n");
+    }
+    roles[ix] = role;
+}
+
+WorkerRole IOWorkerMgr::getRole(int ix) {
+    MutexGuard lock(threadsStructuresMutex);
+    return roles.at(ix);
+}
