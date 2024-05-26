@@ -8,6 +8,7 @@
 #include "job_queue.h"
 #include "common_types.h"
 #include "memory"
+#include "logger.h"
 
 #include "functional"
 #include "string"
@@ -34,7 +35,10 @@ public:
             IOWorkerExitCb exit_callback,
             IOWorkerPipeCloseCb pipe_close_callback,
             int mainSockErr,
-            Side side
+            Side side,
+            Logger& logger,
+            const net_address &ownAddr,
+            const net_address &clientAddr
         );
 
     ~IOWorker();
@@ -55,6 +59,9 @@ protected:
     int mainSockErr;
     Side side;
     bool closedFd;
+    Logger& logger;
+    net_address ownAddr;
+    net_address clientAddr;
 };
 
 using SIOWorker = std::shared_ptr<IOWorker>;

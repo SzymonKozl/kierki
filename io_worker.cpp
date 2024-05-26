@@ -20,7 +20,10 @@ IOWorker::IOWorker(
         IOWorkerExitCb exit_callback,
         IOWorkerPipeCloseCb pipe_close_callback,
         int mainSockErr,
-        Side side
+        Side side,
+        Logger& logger,
+        const net_address& ownAddr,
+        const net_address &clientAddr
         ) :
     id(id),
     terminate(false),
@@ -32,7 +35,10 @@ IOWorker::IOWorker(
     errs(),
     mainSockErr(mainSockErr),
     side(side),
-    closedFd(false)
+    closedFd(false),
+    logger(logger),
+    ownAddr(ownAddr),
+    clientAddr(clientAddr)
 {}
 
 void IOWorker::newJob(SSendJob job) {
@@ -74,6 +80,7 @@ void IOWorker::run() {
                         SSendJob sJob = jobQueue.popNextJob();
                         std::string payload = sJob->genMsg();
                         ssize_t sent_len = writeN(main_fd, (void *) payload.c_str(), payload.size());
+                        logger.log(Message(ownAddr, clientAddr, payload.substr(0, payload.size() - 2)));
                         if (sent_len < 0) {
                             errs.emplace_back("write", errno, mainSockErr);
                             terminate = true;

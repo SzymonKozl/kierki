@@ -39,7 +39,8 @@ Server::Server(game_scenario &&scenario, uint16_t port, int timeout):
     lastDeal(),
     takenInRound(),
     exiting(false),
-    timeout(timeout)
+    timeout(timeout),
+    msgLogger(std::cout, false)
 {
     for (Side s: {W, E, S, N}) {
         activeSides[s] = -1;
@@ -55,7 +56,9 @@ void Server::run() {
         tcp_listen_sock,
         [this](const ErrArr& arr, int ix, Side side) { this->grandExitCallback(arr, ix, side);},
         [this](int ix) {this->workerMgr.clearPipes(ix);},
-        [this](int fd, net_address conn_addr) { this->forwardConnection(fd, std::move(conn_addr));}
+        [this](int fd, net_address conn_addr) { this->forwardConnection(fd, std::move(conn_addr));},
+        std::ref(msgLogger),
+        own_addr
     );
     workerMgr.waitForClearing();
     exit(exitCode);
@@ -264,7 +267,8 @@ void Server::forwardConnection(int fd, net_address conn_addr) {
             [this] (Side s, int ix) { this->playerIntro(s, ix);},
             [this] (int t, Side s, const Card& c) { this->playerTricked(s, c, t);},
             std::move(conn_addr),
-            own_addr
+            own_addr,
+            std::ref(msgLogger)
             );
 }
 

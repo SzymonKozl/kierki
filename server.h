@@ -8,6 +8,7 @@
 #include "io_worker_mgr.h"
 #include "common_types.h"
 #include "game_rules.h"
+#include "logger.h"
 
 #include "unordered_map"
 #include "mutex"
@@ -53,6 +54,7 @@ private:
     std::vector<SSendJob> takenInRound;
     bool exiting;
     int timeout;
+    Logger msgLogger;
 };
 
 

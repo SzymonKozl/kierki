@@ -30,6 +30,6 @@ std::string Message::toString() {
     std::tm* tm_ptr = std::localtime(&tt);
     output << std::put_time(tm_ptr, "%Y-%m-%d %H:%M:%S");
     output << '.' << std::setfill('0') << std::setw(3) << milliseconds.count();
-    output << "] " << payload << "\\r\\n\n";
+    output << "] " << payload << "\n";
     return output.str();
 }
