@@ -213,7 +213,7 @@ void Server::playerIntro(Side side, int workerIx) {
     }
     else {
         std::vector<Side> sidesBusy;
-        for (auto entry: activeSides) sidesBusy.push_back(entry.first);
+        for (auto entry: activeSides) if (entry.second != -1) sidesBusy.push_back(entry.first);
         SSendJob msgBusy = std::static_pointer_cast<SendJob>(std::make_shared<SendJobBusy>(sidesBusy));
         workerMgr.sendJob(msgBusy, workerIx);
     }

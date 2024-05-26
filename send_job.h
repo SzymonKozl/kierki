@@ -26,10 +26,10 @@ using SSendJob = std::shared_ptr<SendJob>;
 
 class SendJobBusy: public SendJob{
 public:
-    SendJobBusy(std::vector<Side> const& taken);
+    explicit SendJobBusy(std::vector<Side> const& taken);
     std::string genMsg() const override;
 private:
-    const std::vector<Side> &taken;
+    const std::vector<Side> taken;
 };
 
 class SendDealJob: public SendJob {
@@ -44,7 +44,7 @@ private:
 
 class SendJobIntro: public SendJob{
 public:
-    SendJobIntro(Side s);
+    explicit SendJobIntro(Side s);
     std::string genMsg() const override;
 private:
     const Side s;
@@ -52,7 +52,7 @@ private:
 
 class SendJobScore : public SendJob {
 public:
-    SendJobScore(const std::unordered_map<Side, int> &scores);
+    explicit SendJobScore(const std::unordered_map<Side, int> &scores);
 
     std::string genMsg() const override;
 private:
@@ -71,7 +71,7 @@ private:
 
 class SendJobTotal: public SendJob {
 public:
-    SendJobTotal(std::unordered_map<Side, int> scores);
+    explicit SendJobTotal(const std::unordered_map<Side, int>& scores);
     std::string genMsg() const override;
 private:
     const std::unordered_map<Side, int> scores;
@@ -88,7 +88,7 @@ private:
 
 class SendJobWrong: public SendJob {
 public:
-    SendJobWrong(int trick_no);
+    explicit SendJobWrong(int trick_no);
     std::string genMsg() const override;
 private:
     int trick_no;
