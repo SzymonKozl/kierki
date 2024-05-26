@@ -18,10 +18,10 @@
 #include "cstring"
 #include "csignal"
 
-size_t writeN(int fd, void * buff, size_t n) {
-    size_t written = 0;
+ssize_t writeN(int fd, void * buff, size_t n) {
+    ssize_t written = 0;
     char * buff_c = (char *) buff;
-    while (written < n) {
+    while (written < static_cast<ssize_t>(n)) {
         ssize_t t = write(fd, buff_c + written, n - written);
         if (t <= 0) return -1;
         written += t;
@@ -29,9 +29,9 @@ size_t writeN(int fd, void * buff, size_t n) {
     return written;
 }
 
-size_t readN(int fd, void * buff, size_t n) {
+ssize_t readN(int fd, void * buff, size_t n) {
     char * buff_c = (char *) buff;
-    size_t _read = 0;
+    ssize_t _read = 0;
     while (_read < n) {
         ssize_t t = read(fd, buff_c + _read, n - _read);
         if (t <= 0) return -1;

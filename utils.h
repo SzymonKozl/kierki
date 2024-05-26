@@ -13,8 +13,9 @@
 #include "arpa/inet.h"
 #include "sys/socket.h"
 
-size_t writeN(int fd, void * buff, size_t n);
-size_t readN(int fd, void * buff, size_t n);
+ssize_t writeN(int fd, void * buff, size_t n);
+
+ssize_t readN(int fd, void * buff, size_t n);
 
 std::string formatAddr(const net_address& addr);
 
