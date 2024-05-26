@@ -43,7 +43,7 @@ static std::uniform_int_distribution<> sleepDist(0, 7);
 void randomDisconnect_(int fd) {
     if (dist(gen) == 1) {
         close(fd);
-        exit(0);
+        exit(69);
     }
 }
 
