@@ -137,10 +137,10 @@ void Server::prepareRound() {
     takenInRound.clear();
 }
 
-void Server::playerTricked(Side side, Card card, int trickNoArg) {
+void Server::playerTricked(Side side, Card card, size_t trickNoArg) {
     MutexGuard lock(gameStateMutex);
-    if (playersConnected < 4 || nextMove != side || !GameRules::isMoveLegal(side, card, hands, table)) {
-        workerMgr.sendJob(std::static_pointer_cast<SendJob>(std::make_shared<SendJobWrong>(trickNoArg)), activeSides[side]);
+    if (trickNoArg != trickNo || playersConnected < 4 || nextMove != side || !GameRules::isMoveLegal(side, card, hands, table)) {
+        workerMgr.sendJob(std::static_pointer_cast<SendJob>(std::make_shared<SendJobWrong>(trickNo)), activeSides[side]);
         return;
     }
 
@@ -148,16 +148,15 @@ void Server::playerTricked(Side side, Card card, int trickNoArg) {
     rmCardIfPresent(hands[side], card);
     nextMove = nxtSide(nextMove);
     if (table.size() == 4ul) {
-        auto [taker, penalty] = GameRules::whoTakes(nextMove, table, roundMode, trickNoArg);
+        auto [taker, penalty] = GameRules::whoTakes(nextMove, table, roundMode, trickNo);
         nextMove = taker;
         penaltiesRound[taker] += penalty;
-        SSendJob msgTaken = std::static_pointer_cast<SendJob>(std::make_shared<SendJobTaken>(table, taker, trickNoArg));
-        trickNoArg ++;
-        trickNo = trickNoArg;
+        SSendJob msgTaken = std::static_pointer_cast<SendJob>(std::make_shared<SendJobTaken>(table, taker, trickNo));
+        trickNo ++;
         table.clear();
         for (Side s: sides_) workerMgr.sendJob(msgTaken, activeSides[s]);
         takenInRound.push_back(msgTaken);
-        if (trickNoArg == TRICKS_PER_ROUND + 1) {
+        if (trickNo == TRICKS_PER_ROUND + 1) {
             updatePenalties();
             SSendJob msgScore = std::static_pointer_cast<SendJob>(std::make_shared<SendJobScore>(penaltiesRound));
             SSendJob msgTotal = std::static_pointer_cast<SendJob>(std::make_shared<SendJobTotal>(penalties));
@@ -182,7 +181,7 @@ void Server::playerTricked(Side side, Card card, int trickNoArg) {
             }
         }
     }
-    workerMgr.sendJob(std::make_shared<SendJobTrick>(table, trickNoArg), activeSides[nextMove]);
+    workerMgr.sendJob(std::make_shared<SendJobTrick>(table, trickNo), activeSides[nextMove]);
 }
 
 void Server::playerIntro(Side side, int workerIx) {

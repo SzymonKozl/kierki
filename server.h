@@ -23,7 +23,7 @@ public:
 private:
     bool furtherMovesNeeded() noexcept;
     void handleSysErr(ErrInfo info);
-    void playerTricked(Side side, Card card, int trickNoArg);
+    void playerTricked(Side side, Card card, size_t trickNoArg);
     void playerIntro(Side side, int workerIx);
     void prepareRound();
     void forwardConnection(int fd, net_address conn_addr);
