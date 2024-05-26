@@ -199,6 +199,24 @@ int Client::run() {
 int Client::makeConnection(sa_family_t proto) {
     int fd = socket(proto, SOCK_STREAM, 0);
     if (fd < 0) throw std::runtime_error("socket");
+    if (proto == AF_INET6) {
+        sockaddr_in6 server_address;
+        server_address.sin6_family = AF_INET6;
+        server_address.sin6_addr = in6addr_any;
+        server_address.sin6_port = htons(0);
+        if (bind(fd,(const sockaddr *) &server_address, sizeof server_address)) {
+            throw std::runtime_error("bind");
+        }
+    }
+    else {
+        sockaddr_in server_address;
+        server_address.sin_family = AF_INET;
+        server_address.sin_addr.s_addr = INADDR_ANY;
+        server_address.sin_port = htons(0);
+        if (bind(fd,(const sockaddr *) &server_address, sizeof server_address)) {
+            throw std::runtime_error("bind");
+        }
+    }
     return fd;
 }
 
