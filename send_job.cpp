@@ -20,7 +20,7 @@ bool SendJob::shouldDisconnectAfter() const noexcept {
 }
 
 SendJobBusy::SendJobBusy(const std::vector<Side> &taken):
-        SendJob("BUST", true),
+        SendJob("BUSY", true),
         taken(taken)
 {}
 
@@ -71,7 +71,7 @@ std::string SendJobTaken::genMsg() const {
     return res + "\r\n";
 }
 
-SendJobTotal::SendJobTotal(std::unordered_map<Side, int> scores):
+SendJobTotal::SendJobTotal(const std::unordered_map<Side, int>& scores):
         SendJob("TOTAL", false),
         scores(scores)
 {}
