@@ -37,13 +37,20 @@ enum GameStage {
 
 static std::random_device rd; // obtain a random number from hardware
 static std::mt19937 gen(rd()); // seed the generator
-static std::uniform_int_distribution<> distr(0, 50); // define the range
-void _randomDisconnect(int fd) {
-    if (distr(gen) == 1) {
+static std::uniform_int_distribution<> dist(0, 50); // define the range
+static std::uniform_int_distribution<> sleepDist(0, 7);
+
+void randomDisconnect_(int fd) {
+    if (dist(gen) == 1) {
         close(fd);
         exit(0);
     }
 }
+
+void randomSleep() {
+    sleep(sleepDist(gen));
+}
+
 int Client::run() {
     GameStage stage = PRE;
     fcntl(0, F_SETFL, fcntl(0, F_GETFL) | O_NONBLOCK);
@@ -77,12 +84,14 @@ int Client::run() {
         delete (addr.addr.addr_in6);
     }
 
-    _randomDisconnect(tcp_sock);
+    randomSleep();
+    randomDisconnect_(tcp_sock);
 
     SSendJob msgIam = std::static_pointer_cast<SendJob>(std::make_shared<SendJobIntro>(side));
     sendMessage(msgIam);
 
-    _randomDisconnect(tcp_sock);
+    randomSleep();
+    randomDisconnect_(tcp_sock);
 
     pollfd poll_fds[] {
             {tcp_sock, POLLIN, 0},
@@ -140,7 +149,7 @@ int Client::run() {
                         resp_array msg_array = parse_msg(msg, false);
                         if (msg_array[0].second == "DEAL") {
                             stage = (stage == PRE) ? AFTER_FIRST_DEAL : AFTER_DEAL;
-                            _randomDisconnect(tcp_sock);
+                            randomDisconnect_(tcp_sock);
                             auto type = (RoundType) (msg_array[1].second.at(0) - '0');
                             Hand hand;
                             for (int i = 3; i < 16; i ++) hand.push_back(Card::fromString(msg_array[i].second));
@@ -148,7 +157,8 @@ int Client::run() {
                             player.dealMsg(type, hand, starting);
                         }
                         else if (msg_array[0].second == "TRICK_S") {
-                            _randomDisconnect(tcp_sock);
+                            randomSleep();
+                            randomDisconnect_(tcp_sock);
                             stage = AFTER_TRICK;
                             waitingForCard = true;
                             trickNo = atoi(msg_array[1].second.c_str());
@@ -159,6 +169,7 @@ int Client::run() {
                             player.trickMsg(trickNo, t);
                         }
                         else if (msg_array[0].second == "TAKEN") {
+                            randomSleep();
                             trickNo = atoi(msg_array[1].second.c_str());
                             Side s = (Side) msg_array[msg_array.size() - 1].second.at(0);
                             Table t;
@@ -168,7 +179,7 @@ int Client::run() {
                         else if (msg_array[0].second == "SCORE" || msg_array[0].second == "TOTAL") {
                             if (msg_array[0].second == "SCORE" ) stage = AFTER_SCORE;
                             else stage = AFTER_TOTAL;
-                            _randomDisconnect(tcp_sock);
+                            randomDisconnect_(tcp_sock);
                             bool total = msg_array[0].second == "TOTAL";
                             score_map res;
                             for (int i = 1; i <= 4; i ++) {
@@ -179,7 +190,8 @@ int Client::run() {
                             player.scoreMsg(res, total);
                         }
                         else if (msg_array[0].second == "WRONG") {
-                            _randomDisconnect(tcp_sock);
+                            randomSleep();
+                            randomDisconnect_(tcp_sock);
                             trickNo = atoi(msg_array[1].second.c_str());
                             waitingForCard = true;
                             player.wrongMsg(trickNo);
