@@ -14,6 +14,7 @@
 
 using IOWorkerIntroCb = std::function<void(Side, int)>;
 using IOWrokerTrickCb = std::function<void(int, Side, Card)>;
+using IOWorkerRepeatOnTiemoutCb = std::function<void(int, SSendJob)>;
 
 class IOWorkerHandler: public IOWorker {
 public:
@@ -25,16 +26,20 @@ public:
             IOWorkerPipeCloseCb pipe_close_callback,
             IOWorkerIntroCb intro_callback,
             IOWrokerTrickCb trick_callback,
+            IOWorkerRepeatOnTiemoutCb repeat_callback,
             const net_address& clientAddr,
             const net_address& own_addr,
-            Logger& logger
+            Logger& logger,
+            int timeout
             );
 private:
     void pollAction() override;
     void quitAction() override;
+    void timeoutAction() override;
 
     IOWrokerTrickCb trickCb;
     IOWorkerIntroCb introCb;
+    IOWorkerRepeatOnTiemoutCb repeatCb;
     bool introduced;
 };
 

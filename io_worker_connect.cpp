@@ -23,7 +23,7 @@ IOWorkerConnect::IOWorkerConnect(
         Logger& logger,
         const net_address& ownAddr
         ):
-        IOWorker(pipe_fd, id, sock_fd, std::move(exit_callback), std::move(pipe_close_callback), IO_ERR_INTERNAL, SIDE_NULL_, logger, ownAddr, {0, ""}),
+        IOWorker(pipe_fd, id, sock_fd, std::move(exit_callback), std::move(pipe_close_callback), IO_ERR_INTERNAL, SIDE_NULL_, logger, ownAddr, {0, ""}, -1),
         accCb(std::move(accept_callback))
 {}
 
@@ -52,5 +52,9 @@ void IOWorkerConnect::pollAction() {
 }
 
 void IOWorkerConnect::quitAction() {
+
+}
+
+void IOWorkerConnect::timeoutAction() {
 
 }

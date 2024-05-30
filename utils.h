@@ -31,6 +31,8 @@ game_scenario parseScenario(const std::string& filepath);
 
 void ignoreBrokenPipe();
 
+void setTimeout(int fd, time_t seconds);
+
 void rmIntersection(Hand& hand, const Table& table);
 
 void rmCardIfPresent(Hand& hand, const Card& card);

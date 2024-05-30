@@ -12,6 +12,7 @@
 #include "string"
 #include "vector"
 #include "unistd.h"
+#include "sys/time.h"
 #include "arpa/inet.h"
 #include "netdb.h"
 #include "stdexcept"
@@ -56,9 +57,6 @@ std::string readUntilRN(int fd) {
     if (buff[itr] != '\n') throw std::runtime_error("invalid msg");
     return {buff, itr - 1};
 }
-
-int setSockTimeout(int fd, int milis);
-
 
 sockaddr_any getIntAddr(const std::string& host, int proto, uint16_t port) {
     addrinfo hints;
@@ -188,6 +186,13 @@ void ignoreBrokenPipe() {
     new_action.sa_flags = 0;
     new_action.sa_handler = dummy;
     sigaction(SIGPIPE, &new_action, nullptr);
+}
+
+void setTimeout(int fd, time_t seconds) {
+    timeval to = {.tv_sec = seconds, .tv_usec = 0};
+    if (setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO, &to, sizeof to)) {
+        throw std::runtime_error("setsockopt");
+    }
 }
 
 void rmIntersection(Hand& hand, const Table& table) {

@@ -22,8 +22,9 @@ IOWorker::IOWorker(
         int mainSockErr,
         Side side,
         Logger& logger,
-        const net_address& ownAddr,
-        const net_address &clientAddr
+        net_address  ownAddr,
+        net_address  clientAddr,
+        int timeout
         ) :
     id(id),
     terminate(false),
@@ -37,8 +38,12 @@ IOWorker::IOWorker(
     side(side),
     closedFd(false),
     logger(logger),
-    ownAddr(ownAddr),
-    clientAddr(clientAddr)
+    ownAddr(std::move(ownAddr)),
+    clientAddr(std::move(clientAddr)),
+    waitingForResponse(false),
+    lastMsgSent(),
+    responseTimeout(std::make_shared<decltype(responseTimeout)::element_type>(std::chrono::system_clock::now() + std::chrono::seconds(timeout))),
+    timeout(timeout)
 {}
 
 void IOWorker::newJob(SSendJob job) {
@@ -59,7 +64,27 @@ void IOWorker::run() {
     while (!terminate) {
         poll_fds[0].revents = 0;
         poll_fds[1].revents = 0;
-        int poll_out = poll(poll_fds, 2, 1000);
+        long timeout_poll = -1;
+        if (responseTimeout.use_count() > 0) {
+            if (std::chrono::system_clock::now() > *responseTimeout) {
+                timeoutAction();
+                responseTimeout.reset();
+                waitingForResponse = false;
+                if (terminate) break;
+            }
+            else {
+                timeout_poll = std::chrono::duration_cast<std::chrono::milliseconds>(*responseTimeout - std::chrono::system_clock::now()).count();
+            }
+        }
+        int poll_out = poll(poll_fds, 2, static_cast<int>(timeout_poll));
+        if (responseTimeout.use_count() > 0) {
+            if (std::chrono::system_clock::now() > *responseTimeout) {
+                timeoutAction();
+                responseTimeout.reset();
+                waitingForResponse = false;
+                if (terminate) break;
+            }
+        }
         if (poll_out == 0) continue;
         if (poll_out < 0) {
             errs.emplace_back("poll", errno, mainSockErr);
@@ -74,19 +99,32 @@ void IOWorker::run() {
                     errs.emplace_back("read", errno, IO_ERR_INTERNAL);
                     break;
                 }
-                else
+                else {
                     // new job or exit order
                     while (jobQueue.hasNextJob()) {
                         SSendJob sJob = jobQueue.popNextJob();
                         std::string payload = sJob->genMsg();
                         ssize_t sent_len = writeN(main_fd, (void *) payload.c_str(), payload.size());
-                        logger.log(Message(ownAddr, clientAddr, payload.substr(0, payload.size() - 2)));
                         if (sent_len < 0) {
                             errs.emplace_back("write", errno, mainSockErr);
                             terminate = true;
                             break;
                         }
-                    }{
+                        if (sJob->isResponseExpected()) {
+                            waitingForResponse = true;
+                            responseTimeout = std::make_shared<decltype(responseTimeout)::element_type>(std::chrono::system_clock::now() + std::chrono::seconds(timeout));
+                        }
+                        if (sJob->shouldDisconnectAfter()) {
+                            if (close(main_fd)) {
+                                errs.emplace_back("close", errno, mainSockErr);
+                            }
+                            closedFd = true;
+                            terminate = true;
+                            break;
+                        }
+                        lastMsgSent = sJob;
+                        logger.log(Message(ownAddr, clientAddr, payload.substr(0, payload.size() - 2)));
+                    }
                     if (jobQueue.hasKillOrder()) {
                         terminate = true;
                         break;
@@ -102,6 +140,8 @@ void IOWorker::run() {
             else if (poll_fds[0].revents & POLLIN) {
                 try {
                     pollAction();
+                    waitingForResponse = false;
+                    responseTimeout.reset();
                 } catch (std::exception &e) {
                     terminate = true;
                     break;

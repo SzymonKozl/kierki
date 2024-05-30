@@ -140,9 +140,12 @@ void Server::prepareRound() {
 
 void Server::playerTricked(Side side, Card card, size_t trickNoArg) {
     MutexGuard lock(gameStateMutex);
-    if (trickNoArg != trickNo || playersConnected < 4 || nextMove != side || !GameRules::isMoveLegal(side, card, hands, table)) {
-        workerMgr.sendJob(std::static_pointer_cast<SendJob>(std::make_shared<SendJobWrong>(trickNo)), activeSides[side]);
+    if (trickNoArg != trickNo || playersConnected < 4 || nextMove != side) {
+        workerMgr.sendJob(std::static_pointer_cast<SendJob>(std::make_shared<SendJobWrong>(trickNo, true)), activeSides[side]);
         return;
+    }
+    else if (!GameRules::isMoveLegal(side, card, hands, table)){
+        workerMgr.sendJob(std::static_pointer_cast<SendJob>(std::make_shared<SendJobWrong>(trickNo, false)), activeSides[side]);
     }
 
     table.push_back(card);
@@ -182,7 +185,7 @@ void Server::playerTricked(Side side, Card card, size_t trickNoArg) {
             }
         }
     }
-    workerMgr.sendJob(std::make_shared<SendJobTrick>(table, trickNo), activeSides[nextMove]);
+    workerMgr.sendJob(std::make_shared<SendJobTrick>(table, trickNo, true), activeSides[nextMove]);
 }
 
 void Server::playerIntro(Side side, int workerIx) {
@@ -198,7 +201,7 @@ void Server::playerIntro(Side side, int workerIx) {
                 SSendJob msgDeal = std::static_pointer_cast<SendJob>(std::make_shared<SendDealJob>(roundMode, nextMove, hands[s]));
                 workerMgr.sendJob(msgDeal, activeSides[s]);
             }
-            SSendJob msgTrick = std::static_pointer_cast<SendJob>(std::make_shared<SendJobTrick>(table, trickNo));
+            SSendJob msgTrick = std::static_pointer_cast<SendJob>(std::make_shared<SendJobTrick>(table, trickNo, true));
             workerMgr.sendJob(msgTrick, activeSides[nextMove]);
         }
         else if (!lastDeal.empty()) {
@@ -208,7 +211,7 @@ void Server::playerIntro(Side side, int workerIx) {
                 workerMgr.sendJob(msg, workerIx);
             }
             if (playersConnected == 4) {
-                SSendJob msgTrick = std::static_pointer_cast<SendJob>(std::make_shared<SendJobTrick>(table, trickNo));
+                SSendJob msgTrick = std::static_pointer_cast<SendJob>(std::make_shared<SendJobTrick>(table, trickNo, true));
                 workerMgr.sendJob(msgTrick, activeSides[nextMove]);
             }
         }
@@ -262,6 +265,7 @@ int Server::makeTCPSock(uint16_t port) {
 
 void Server::forwardConnection(int fd, net_address conn_addr) {
     MutexGuard lock(gameStateMutex);
+    setTimeout(fd, timeout);
     workerMgr.spawnNewWorker<IOWorkerHandler>(
             HANDLING_UNKNOWN,
             fd,
@@ -269,9 +273,14 @@ void Server::forwardConnection(int fd, net_address conn_addr) {
             [this] (int ix) {this->workerMgr.clearPipes(ix);},
             [this] (Side s, int ix) { this->playerIntro(s, ix);},
             [this] (int t, Side s, const Card& c) { this->playerTricked(s, c, t);},
+            [this] (int ix, SSendJob msg) {
+                MutexGuard lock(this->gameStateMutex);
+                this->workerMgr.sendJob(std::move(msg), ix);
+            },
             std::move(conn_addr),
             own_addr,
-            std::ref(msgLogger)
+            std::ref(msgLogger),
+            timeout
             );
 }
 

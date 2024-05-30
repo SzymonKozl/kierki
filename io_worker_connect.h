@@ -28,6 +28,7 @@ public:
 private:
     void pollAction() override;
     void quitAction() override;
+    void timeoutAction() override;
 
     IOWorkerConnectionMadeCb accCb;
 };

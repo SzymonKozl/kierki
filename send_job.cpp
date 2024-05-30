@@ -4,10 +4,13 @@
 
 #include "send_job.h"
 
+#include <utility>
+
 #include "iostream"
 
-SendJob::SendJob(std::string &&msg_prefix, bool disconnectAfter):
+SendJob::SendJob(std::string &&msg_prefix, bool disconnectAfter, bool responseExpected):
         disconnectAfter(disconnectAfter),
+        responseExpected(responseExpected),
         msg_prefix(msg_prefix)
 {}
 
@@ -19,8 +22,12 @@ bool SendJob::shouldDisconnectAfter() const noexcept {
     return disconnectAfter;
 }
 
+bool SendJob::isResponseExpected() const noexcept {
+    return responseExpected;
+}
+
 SendJobBusy::SendJobBusy(const std::vector<Side> &taken):
-        SendJob("BUSY", true),
+        SendJob("BUSY", true, false),
         taken(taken)
 {}
 
@@ -31,7 +38,7 @@ std::string SendJobBusy::genMsg() const {
 }
 
 SendJobIntro::SendJobIntro(Side s):
-        SendJob("IAM", false),
+        SendJob("IAM", false, false),
         s(s)
 {}
 
@@ -42,7 +49,7 @@ std::string SendJobIntro::genMsg() const {
 }
 
 SendJobScore::SendJobScore(const std::unordered_map<Side, int>& scores):
-        SendJob("SCORE", false),
+        SendJob("SCORE", false, false),
         scores(scores)
 {}
 
@@ -55,11 +62,11 @@ std::string SendJobScore::genMsg() const {
     return res + "\r\n";
 }
 
-SendJobTaken::SendJobTaken(const Table &cards, Side s, int trickNo):
-        SendJob("TAKEN", false),
+SendJobTaken::SendJobTaken(Table cards, Side s, int trickNo):
+        SendJob("TAKEN", false, false),
         s(s),
         trickNo(trickNo),
-        table(cards)
+        table(std::move(cards))
 {}
 
 std::string SendJobTaken::genMsg() const {
@@ -72,22 +79,22 @@ std::string SendJobTaken::genMsg() const {
 }
 
 SendJobTotal::SendJobTotal(const std::unordered_map<Side, int>& scores):
-        SendJob("TOTAL", false),
+        SendJob("TOTAL", false, false),
         scores(scores)
 {}
 
 std::string SendJobTotal::genMsg() const {
     std::string res = msg_prefix;
-    for (auto itr = scores.begin(); itr != scores.end(); itr ++) {
-        res += (char) itr->first;
-        res += std::to_string(itr->second);
+    for (auto score : scores) {
+        res += (char) score.first;
+        res += std::to_string(score.second);
     }
     return res + "\r\n";
 }
 
-SendJobTrick::SendJobTrick(const Table &table, int trickNo):
-        SendJob("TRICK", false),
-        tableState(table),
+SendJobTrick::SendJobTrick(Table table, int trickNo, bool serverSide):
+        SendJob("TRICK", false, serverSide),
+        tableState(std::move(table)),
         trickNo(trickNo)
 {}
 
@@ -99,8 +106,8 @@ std::string SendJobTrick::genMsg() const {
     return res + "\r\n";
 }
 
-SendJobWrong::SendJobWrong(int trick_no):
-        SendJob("WRONG", false),
+SendJobWrong::SendJobWrong(int trick_no, bool outOfOrder):
+        SendJob("WRONG", false, !outOfOrder),
         trick_no(trick_no)
 {}
 
@@ -108,11 +115,11 @@ std::string SendJobWrong::genMsg() const {
     return msg_prefix + std::to_string(trick_no) + "\r\n";
 }
 
-SendDealJob::SendDealJob(RoundType roundType, Side starting, const Hand &cards):
-        SendJob("DEAL", false),
+SendDealJob::SendDealJob(RoundType roundType, Side starting, Hand cards):
+        SendJob("DEAL", false, false),
         roundType(roundType),
         starting(starting),
-        cards(cards)
+        cards(std::move(cards))
 {}
 
 std::string SendDealJob::genMsg() const {

@@ -24,13 +24,16 @@ IOWorkerHandler::IOWorkerHandler(
         IOWorkerPipeCloseCb pipe_close_callback,
         IOWorkerIntroCb intro_callback,
         IOWrokerTrickCb trick_callback,
+        IOWorkerRepeatOnTiemoutCb repeat_callback,
         const net_address& clientAddr,
-        const net_address& ownAddr,
-        Logger& logger
+        const net_address& own_addr,
+        Logger& logger,
+        int timeout
 ):
-        IOWorker(pipe_fd, id, sock_fd, std::move(exit_callback), std::move(pipe_close_callback), IO_ERR_EXTERNAL, SIDE_NULL_, logger, ownAddr, clientAddr),
+        IOWorker(pipe_fd, id, sock_fd, std::move(exit_callback), std::move(pipe_close_callback), IO_ERR_EXTERNAL, SIDE_NULL_, logger, ownAddr, clientAddr, timeout),
         trickCb(std::move(trick_callback)),
         introCb(std::move(intro_callback)),
+        repeatCb(std::move(repeat_callback)),
         introduced(false)
         {}
 
@@ -40,7 +43,6 @@ void IOWorkerHandler::pollAction() {
         msg = readUntilRN(main_fd);
     } catch (...) {
         // invalid message from Client, disconnecting
-        int errno_cpy = errno;
         if (close(main_fd)) {
             errs.emplace_back("close", errno, IO_ERR_EXTERNAL);
         }
@@ -75,4 +77,19 @@ void IOWorkerHandler::pollAction() {
 }
 
 void IOWorkerHandler::quitAction() {
+}
+
+void IOWorkerHandler::timeoutAction() {
+    if (!introduced) {
+        if (close(main_fd)) {
+            errs.emplace_back("close", errno, IO_ERR_EXTERNAL);
+        }
+        closedFd = true;
+        terminate = true;
+    }
+    else {
+        if (waitingForResponse) {
+            repeatCb(id, lastMsgSent);
+        }
+    }
 }

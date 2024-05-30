@@ -223,9 +223,9 @@ int Client::makeConnection(sa_family_t proto) {
 void Client::chooseCard(const Card& c) {
     selectedCard = Card(c.getValue(), c.getColor());
     if (waitingForCard) {
-        Table h;
-        h.push_back(selectedCard);
-        SSendJob msg = std::static_pointer_cast<SendJob>(std::make_shared<SendJobTrick>(h, trickNo));
+        Table hand;
+        hand.push_back(selectedCard);
+        SSendJob msg = std::static_pointer_cast<SendJob>(std::make_shared<SendJobTrick>(hand, trickNo, false));
         sendMessage(msg);
         waitingForCard = false;
     }

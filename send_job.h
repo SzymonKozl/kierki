@@ -13,12 +13,14 @@
 
 class SendJob {
 public:
-    virtual std::string genMsg() const = 0;
-    bool shouldDisconnectAfter() const noexcept;
+    [[nodiscard]] virtual std::string genMsg() const = 0;
+    [[nodiscard]] bool shouldDisconnectAfter() const noexcept;
+    [[nodiscard]] bool isResponseExpected() const noexcept;
     void setDisconnectAfter(bool val) noexcept;
 protected:
-    SendJob(std::string &&msg_prefix, bool disconnectAfter);
+    SendJob(std::string &&msg_prefix, bool disconnectAfter, bool reponseExpected);
     bool disconnectAfter;
+    bool responseExpected;
     const std::string msg_prefix;
 };
 
@@ -34,7 +36,7 @@ private:
 
 class SendDealJob: public SendJob {
 public:
-    SendDealJob(RoundType roundType, Side starting, const Hand& cards);
+    SendDealJob(RoundType roundType, Side starting, Hand  cards);
     std::string genMsg() const override;
 private:
     const RoundType roundType;
@@ -61,7 +63,7 @@ private:
 
 class SendJobTaken: public SendJob {
 public:
-    SendJobTaken(Table const& cards, Side s, int trickNo);
+    SendJobTaken(Table  cards, Side s, int trickNo);
     std::string genMsg() const override;
 private:
     const Side s;
@@ -79,7 +81,7 @@ private:
 
 class SendJobTrick: public SendJob{
 public:
-    SendJobTrick(Table const& table, int trickNo);
+    SendJobTrick(Table  table, int trickNo, bool serverSide);
     std::string genMsg() const override;
 private:
     const Table tableState;
@@ -88,7 +90,7 @@ private:
 
 class SendJobWrong: public SendJob {
 public:
-    explicit SendJobWrong(int trick_no);
+    explicit SendJobWrong(int trick_no, bool outOfOrder);
     std::string genMsg() const override;
 private:
     int trick_no;
