@@ -8,9 +8,10 @@
 
 #include "iostream"
 
-SendJob::SendJob(std::string &&msg_prefix, bool disconnectAfter, bool responseExpected):
+SendJob::SendJob(std::string &&msg_prefix, bool disconnectAfter, bool responseExpected, bool overrideLast):
         disconnectAfter(disconnectAfter),
         responseExpected(responseExpected),
+        overrideLast(overrideLast),
         msg_prefix(msg_prefix)
 {}
 
@@ -26,8 +27,12 @@ bool SendJob::isResponseExpected() const noexcept {
     return responseExpected;
 }
 
+bool SendJob::registrable() const {
+    return overrideLast;
+}
+
 SendJobBusy::SendJobBusy(const std::vector<Side> &taken):
-        SendJob("BUSY", true, false),
+        SendJob("BUSY", true, false, true),
         taken(taken)
 {}
 
@@ -38,7 +43,7 @@ std::string SendJobBusy::genMsg() const {
 }
 
 SendJobIntro::SendJobIntro(Side s):
-        SendJob("IAM", false, false),
+        SendJob("IAM", false, false, true),
         s(s)
 {}
 
@@ -49,7 +54,7 @@ std::string SendJobIntro::genMsg() const {
 }
 
 SendJobScore::SendJobScore(const std::unordered_map<Side, int>& scores):
-        SendJob("SCORE", false, false),
+        SendJob("SCORE", false, false, true),
         scores(scores)
 {}
 
@@ -63,7 +68,7 @@ std::string SendJobScore::genMsg() const {
 }
 
 SendJobTaken::SendJobTaken(Table cards, Side s, int trickNo):
-        SendJob("TAKEN", false, false),
+        SendJob("TAKEN", false, false, true),
         s(s),
         trickNo(trickNo),
         table(std::move(cards))
@@ -79,7 +84,7 @@ std::string SendJobTaken::genMsg() const {
 }
 
 SendJobTotal::SendJobTotal(const std::unordered_map<Side, int>& scores):
-        SendJob("TOTAL", false, false),
+        SendJob("TOTAL", false, false, true),
         scores(scores)
 {}
 
@@ -93,7 +98,7 @@ std::string SendJobTotal::genMsg() const {
 }
 
 SendJobTrick::SendJobTrick(Table table, int trickNo, bool serverSide):
-        SendJob("TRICK", false, serverSide),
+        SendJob("TRICK", false, serverSide, true),
         tableState(std::move(table)),
         trickNo(trickNo)
 {}
@@ -107,7 +112,7 @@ std::string SendJobTrick::genMsg() const {
 }
 
 SendJobWrong::SendJobWrong(int trick_no, bool outOfOrder):
-        SendJob("WRONG", false, !outOfOrder),
+        SendJob("WRONG", false, !outOfOrder, false),
         trick_no(trick_no)
 {}
 
@@ -116,7 +121,7 @@ std::string SendJobWrong::genMsg() const {
 }
 
 SendDealJob::SendDealJob(RoundType roundType, Side starting, Hand cards):
-        SendJob("DEAL", false, false),
+        SendJob("DEAL", false, false, true),
         roundType(roundType),
         starting(starting),
         cards(std::move(cards))

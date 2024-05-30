@@ -122,7 +122,7 @@ void IOWorker::run() {
                             terminate = true;
                             break;
                         }
-                        lastMsgSent = sJob;
+                        if (sJob->registrable()) lastMsgSent = sJob;
                         logger.log(Message(ownAddr, clientAddr, payload.substr(0, payload.size() - 2)));
                     }
                     if (jobQueue.hasKillOrder()) {

@@ -146,6 +146,7 @@ void Server::playerTricked(Side side, Card card, size_t trickNoArg) {
     }
     else if (!GameRules::isMoveLegal(side, card, hands, table)){
         workerMgr.sendJob(std::static_pointer_cast<SendJob>(std::make_shared<SendJobWrong>(trickNo, false)), activeSides[side]);
+        return;
     }
 
     table.push_back(card);

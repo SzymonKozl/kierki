@@ -16,11 +16,13 @@ public:
     [[nodiscard]] virtual std::string genMsg() const = 0;
     [[nodiscard]] bool shouldDisconnectAfter() const noexcept;
     [[nodiscard]] bool isResponseExpected() const noexcept;
+    bool registrable() const;
     void setDisconnectAfter(bool val) noexcept;
 protected:
-    SendJob(std::string &&msg_prefix, bool disconnectAfter, bool reponseExpected);
+    SendJob(std::string &&msg_prefix, bool disconnectAfter, bool responseExpected, bool overrideLast);
     bool disconnectAfter;
     bool responseExpected;
+    bool overrideLast;
     const std::string msg_prefix;
 };
 
