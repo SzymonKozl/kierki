@@ -103,7 +103,12 @@ int main(int argc, char* argv[]) {
                 [&clientObj](const Card &c) { clientObj.chooseCard(c); },
                 [&clientObj]() { return clientObj.isWaitingForCard(); }
         );
-        exit(clientObj.run());
+        try {
+            exit(clientObj.run());
+        } catch (std::runtime_error &e) {
+            std::cerr << "client error on system call: " << e.what() << "!. errno: " << errno << std::endl;
+            exit(1);
+        }
     }
     else {
         PlayerConsole player;
