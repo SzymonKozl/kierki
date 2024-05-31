@@ -67,7 +67,7 @@ void IOWorkerMgr::finish() {
 
 void IOWorkerMgr::sendJob(SSendJob job, int ix) {
     MutexGuard lock(threadsStructuresMutex);
-    workers.at(ix)->newJob(std::move(job));
+    workers.at(ix)->newJob(job);
     signal(ix);
 }
 

@@ -22,7 +22,7 @@ class IOWorker {
 public:
     void run();
 
-    void newJob(SSendJob job);
+    void newJob(const SSendJob& job);
 
     void scheduleDeath();
 
@@ -70,6 +70,10 @@ protected:
     SSendJob lastMsgSent;
     std::shared_ptr<std::chrono::time_point<std::chrono::system_clock>> responseTimeout;
     int timeout;
+
+private:
+    void handleQueue();
+    void handlePipe();
 };
 
 using SIOWorker = std::shared_ptr<IOWorker>;

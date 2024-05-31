@@ -47,8 +47,8 @@ IOWorker::IOWorker(
     timeout(timeout)
 {}
 
-void IOWorker::newJob(SSendJob job) {
-    jobQueue.pushNextJob(std::move(job));
+void IOWorker::newJob(const SSendJob& job) {
+    jobQueue.pushNextJob(job);
 }
 
 void IOWorker::scheduleDeath() {
@@ -96,63 +96,28 @@ void IOWorker::run() {
         }
         else {
             if (poll_fds[1].revents & POLLIN) {
-                char msg;
-                ssize_t read_len;
-                do {
-                    read_len = read(pipe_fd, &msg, 1);
-                } while (read_len > 0);
-                if (read_len < 0) {
-                    if (errno != EAGAIN && errno != EWOULDBLOCK) {
-                        errs.emplace_back("read", errno, IO_ERR_INTERNAL);
-                        terminate = true;
-                        break;
-                    }
-                }
+                handlePipe();
+                if (terminate) break;
                 if (jobQueue.isStopped()) {
+                    handleQueue();
                     // setting pipe to blocking
                     fcntl(pipe_fd, F_SETFL, fcntl(pipe_fd, F_GETFL) ^ O_NONBLOCK);
-                    do {
-                        read_len = read(pipe_fd, &msg, 1);
-                    } while (read_len > 0 && jobQueue.isStopped());
-                    if (read_len < 0) {
-                        if (errno != EAGAIN && errno != EWOULDBLOCK) {
+                    ssize_t read_len;
+                    char msg;
+                    if ((read_len = read(pipe_fd, &msg, 1)) < 1) {
+                        if (read_len < 0) {
                             errs.emplace_back("read", errno, IO_ERR_INTERNAL);
-                            terminate = true;
-                            break;
                         }
+                        terminate = true;
+                        break;
                     }
                     // setting pipe to non-blocking back
                     fcntl(pipe_fd, F_SETFL, fcntl(pipe_fd, F_GETFL) | O_NONBLOCK);
+                    handlePipe();
+                    if (terminate) break;
                 }
                 // new job or exit order or stop order
-                while (jobQueue.hasNextJob()) {
-                    SSendJob sJob = jobQueue.popNextJob();
-                    std::string payload = sJob->genMsg();
-                    ssize_t sent_len = writeN(main_fd, (void *) payload.c_str(), payload.size());
-                    if (sent_len < 0) {
-                        errs.emplace_back("write", errno, mainSockErr);
-                        terminate = true;
-                        break;
-                    }
-                    if (sJob->isResponseExpected()) {
-                        waitingForResponse = true;
-                        responseTimeout = std::make_shared<decltype(responseTimeout)::element_type>(std::chrono::system_clock::now() + std::chrono::seconds(timeout));
-                    }
-                    if (sJob->shouldDisconnectAfter()) {
-                        if (close(main_fd)) {
-                            errs.emplace_back("close", errno, mainSockErr);
-                        }
-                        closedFd = true;
-                        terminate = true;
-                        break;
-                    }
-                    if (sJob->registrable()) lastMsgSent = sJob;
-                    logger.log(Message(ownAddr, clientAddr, payload.substr(0, payload.size() - 2)));
-                }
-                if (jobQueue.hasKillOrder()) {
-                    terminate = true;
-                    break;
-                }
+                handleQueue();
                 if (terminate) break;
             }
             else if (poll_fds[1].revents & (POLLERR | POLLHUP | POLLNVAL)) {
@@ -195,5 +160,49 @@ void IOWorker::unhalt() {
 IOWorker::~IOWorker() {
     if (!closedFd) {
         if (close(main_fd)) std::cerr << "error on close: " << errno << std:: endl << std::flush;
+    }
+}
+
+void IOWorker::handleQueue() {
+    while (jobQueue.hasNextJob()) {
+        SSendJob sJob = jobQueue.popNextJob();
+        std::string payload = sJob->genMsg();
+        ssize_t sent_len = writeN(main_fd, (void *) payload.c_str(), payload.size());
+        if (sent_len < 0) {
+            errs.emplace_back("write", errno, mainSockErr);
+            terminate = true;
+            break;
+        }
+        if (sJob->isResponseExpected()) {
+            waitingForResponse = true;
+            responseTimeout = std::make_shared<decltype(responseTimeout)::element_type>(std::chrono::system_clock::now() + std::chrono::seconds(timeout));
+        }
+        if (sJob->shouldDisconnectAfter()) {
+            if (close(main_fd)) {
+                errs.emplace_back("close", errno, mainSockErr);
+            }
+            closedFd = true;
+            terminate = true;
+            break;
+        }
+        if (sJob->registrable()) lastMsgSent = sJob;
+        logger.log(Message(ownAddr, clientAddr, payload.substr(0, payload.size() - 2)));
+    }
+    if (jobQueue.hasKillOrder()) {
+        terminate = true;
+    }
+}
+
+void IOWorker::handlePipe() {
+    ssize_t read_len;
+    char msg;
+    do {
+        read_len = read(pipe_fd, &msg, 1);
+    } while (read_len > 0);
+    if (read_len < 0) {
+        if (errno != EAGAIN && errno != EWOULDBLOCK) {
+            errs.emplace_back("read", errno, IO_ERR_INTERNAL);
+            terminate = true;
+        }
     }
 }
