@@ -285,7 +285,6 @@ Client::Client(Player &player, net_address connectTo, Side side, sa_family_t pro
         serverAddr(std::move(connectTo)),
         waitingForCard(false),
         selectedCard("3", COLOR_H),
-        lastGivenCard("3", COLOR_H),
         side(side),
         trickNo(1),
         proto(proto),
