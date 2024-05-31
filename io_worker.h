@@ -12,6 +12,8 @@
 
 #include "functional"
 #include "string"
+#include "chrono"
+#include "memory"
 
 using IOWorkerExitCb = std::function<void(ErrArr, int, Side)>;
 using IOWorkerPipeCloseCb = std::function<void(int)>;
@@ -37,8 +39,9 @@ public:
             int mainSockErr,
             Side side,
             Logger& logger,
-            const net_address &ownAddr,
-            const net_address &clientAddr
+            net_address ownAddr,
+            net_address clientAddr,
+            int timeout
         );
 
     ~IOWorker();
@@ -46,6 +49,7 @@ public:
 protected:
     virtual void pollAction() = 0;
     virtual void quitAction() = 0;
+    virtual void timeoutAction() = 0;
     void informAboutError();
 
     int id;
@@ -62,6 +66,10 @@ protected:
     Logger& logger;
     net_address ownAddr;
     net_address clientAddr;
+    bool waitingForResponse;
+    SSendJob lastMsgSent;
+    std::shared_ptr<std::chrono::time_point<std::chrono::system_clock>> responseTimeout;
+    int timeout;
 };
 
 using SIOWorker = std::shared_ptr<IOWorker>;

@@ -17,12 +17,19 @@
 #include "mutex"
 #include "semaphore"
 
+enum WorkerRole {
+    HANDLING_ACTIVE,
+    HANDLING_UNKNOWN,
+    INCOMING_PROXY,
+    HANDLING_DISCARDED
+};
+
 using IOWorkerMgrPipeCb = std::function<void(ErrInfo)>;
 
 class IOWorkerMgr {
 public:
     template<class T, class... Args> requires std::is_base_of_v<IOWorker, T> &&  std::constructible_from<T, int, int, Args...>
-    int spawnNewWorker(Args... args);
+    int spawnNewWorker(WorkerRole role, Args... args);
     void sendKill(int ix, bool locked = false);
     void finish();
     void sendJob(SSendJob job, int ix);
@@ -30,6 +37,8 @@ public:
     void waitForClearing();
     void releaseCleaner();
     void clearPipes(int ix);
+    void setRole(int ix, WorkerRole role);
+    WorkerRole getRole(int ix);
     explicit IOWorkerMgr(IOWorkerMgrPipeCb &&pipeCb);
     ~IOWorkerMgr();
 private:
@@ -40,6 +49,7 @@ private:
     std::unordered_map<int, SIOWorker> workers;
     std::unordered_map<int, std::pair<int, int>> pipes;
     std::unordered_map<int, Sjthread> threads;
+    std::unordered_map<int, WorkerRole> roles;
     int nextIx;
     IOWorkerMgrPipeCb pipeCb;
 
@@ -51,7 +61,7 @@ private:
 
 template<class T, class ...Args>
 requires std::is_base_of_v<IOWorker, T> && std::constructible_from<T, int, int, Args...>
-inline int IOWorkerMgr::spawnNewWorker(Args ...args) {
+inline int IOWorkerMgr::spawnNewWorker(WorkerRole role, Args ...args) {
     MutexGuard lock(threadsStructuresMutex);
     int ix = nextIx++;
     int pipe_fd[2];
@@ -64,6 +74,7 @@ inline int IOWorkerMgr::spawnNewWorker(Args ...args) {
     workers.emplace(ix, std::static_pointer_cast<IOWorker>(std::make_shared<T>(pipe_fd[0], ix, args...)));
 
     threads.emplace(ix, std::make_shared<std::jthread>([ix, this]() { this->workers.at(ix)->run(); }));
+    roles.emplace(ix, role);
     return ix;
 }
 
