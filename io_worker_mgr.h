@@ -39,6 +39,8 @@ public:
     void clearPipes(int ix);
     void setRole(int ix, WorkerRole role);
     WorkerRole getRole(int ix);
+    void halt(int ix);
+    void unhalt(int ix);
     explicit IOWorkerMgr(IOWorkerMgrPipeCb &&pipeCb);
     ~IOWorkerMgr();
 private:

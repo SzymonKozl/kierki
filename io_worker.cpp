@@ -12,6 +12,7 @@
 #include "poll.h"
 #include "unistd.h"
 #include "cerrno"
+#include "fcntl.h"
 
 IOWorker::IOWorker(
         int pipe_fd,
@@ -61,6 +62,8 @@ void IOWorker::run() {
     poll_fds[1].fd = pipe_fd;
     poll_fds[1].events = POLLIN;
 
+    fcntl(pipe_fd, F_SETFL, fcntl(pipe_fd, F_GETFL) | O_NONBLOCK);
+
     while (!terminate) {
         poll_fds[0].revents = 0;
         poll_fds[1].revents = 0;
@@ -94,43 +97,63 @@ void IOWorker::run() {
         else {
             if (poll_fds[1].revents & POLLIN) {
                 char msg;
-                ssize_t read_len = read(pipe_fd, &msg, 1);
+                ssize_t read_len;
+                do {
+                    read_len = read(pipe_fd, &msg, 1);
+                } while (read_len > 0);
                 if (read_len < 0) {
-                    errs.emplace_back("read", errno, IO_ERR_INTERNAL);
-                    break;
-                }
-                else {
-                    // new job or exit order
-                    while (jobQueue.hasNextJob()) {
-                        SSendJob sJob = jobQueue.popNextJob();
-                        std::string payload = sJob->genMsg();
-                        ssize_t sent_len = writeN(main_fd, (void *) payload.c_str(), payload.size());
-                        if (sent_len < 0) {
-                            errs.emplace_back("write", errno, mainSockErr);
-                            terminate = true;
-                            break;
-                        }
-                        if (sJob->isResponseExpected()) {
-                            waitingForResponse = true;
-                            responseTimeout = std::make_shared<decltype(responseTimeout)::element_type>(std::chrono::system_clock::now() + std::chrono::seconds(timeout));
-                        }
-                        if (sJob->shouldDisconnectAfter()) {
-                            if (close(main_fd)) {
-                                errs.emplace_back("close", errno, mainSockErr);
-                            }
-                            closedFd = true;
-                            terminate = true;
-                            break;
-                        }
-                        if (sJob->registrable()) lastMsgSent = sJob;
-                        logger.log(Message(ownAddr, clientAddr, payload.substr(0, payload.size() - 2)));
-                    }
-                    if (jobQueue.hasKillOrder()) {
+                    if (errno != EAGAIN && errno != EWOULDBLOCK) {
+                        errs.emplace_back("read", errno, IO_ERR_INTERNAL);
                         terminate = true;
                         break;
                     }
-                    if (terminate) break;
                 }
+                if (jobQueue.isStopped()) {
+                    // setting pipe to blocking
+                    fcntl(pipe_fd, F_SETFL, fcntl(pipe_fd, F_GETFL) ^ O_NONBLOCK);
+                    do {
+                        read_len = read(pipe_fd, &msg, 1);
+                    } while (read_len > 0 && jobQueue.isStopped());
+                    if (read_len < 0) {
+                        if (errno != EAGAIN && errno != EWOULDBLOCK) {
+                            errs.emplace_back("read", errno, IO_ERR_INTERNAL);
+                            terminate = true;
+                            break;
+                        }
+                    }
+                    // setting pipe to non-blocking back
+                    fcntl(pipe_fd, F_SETFL, fcntl(pipe_fd, F_GETFL) | O_NONBLOCK);
+                }
+                // new job or exit order or stop order
+                while (jobQueue.hasNextJob()) {
+                    SSendJob sJob = jobQueue.popNextJob();
+                    std::string payload = sJob->genMsg();
+                    ssize_t sent_len = writeN(main_fd, (void *) payload.c_str(), payload.size());
+                    if (sent_len < 0) {
+                        errs.emplace_back("write", errno, mainSockErr);
+                        terminate = true;
+                        break;
+                    }
+                    if (sJob->isResponseExpected()) {
+                        waitingForResponse = true;
+                        responseTimeout = std::make_shared<decltype(responseTimeout)::element_type>(std::chrono::system_clock::now() + std::chrono::seconds(timeout));
+                    }
+                    if (sJob->shouldDisconnectAfter()) {
+                        if (close(main_fd)) {
+                            errs.emplace_back("close", errno, mainSockErr);
+                        }
+                        closedFd = true;
+                        terminate = true;
+                        break;
+                    }
+                    if (sJob->registrable()) lastMsgSent = sJob;
+                    logger.log(Message(ownAddr, clientAddr, payload.substr(0, payload.size() - 2)));
+                }
+                if (jobQueue.hasKillOrder()) {
+                    terminate = true;
+                    break;
+                }
+                if (terminate) break;
             }
             else if (poll_fds[1].revents & (POLLERR | POLLHUP | POLLNVAL)) {
                 errs.emplace_back("pipe", errno, IO_ERR_INTERNAL);

@@ -127,3 +127,13 @@ WorkerRole IOWorkerMgr::getRole(int ix) {
     MutexGuard lock(threadsStructuresMutex);
     return roles.at(ix);
 }
+
+void IOWorkerMgr::halt(int ix) {
+    MutexGuard lock(threadsStructuresMutex);
+    workers[ix]->halt();
+}
+
+void IOWorkerMgr::unhalt(int ix) {
+    MutexGuard lock(threadsStructuresMutex);
+    workers[ix]->unhalt();
+}

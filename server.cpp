@@ -196,6 +196,12 @@ void Server::playerIntro(Side side, int workerIx) {
         activeSides[side] = workerIx;
         workerMgr.setRole(workerIx, HANDLING_ACTIVE);
         playersConnected ++;
+        if (playersConnected == 4) {
+            for (Side s: sides_) {
+                if (s == side) continue;
+                workerMgr.unhalt(activeSides[s]);
+            }
+        }
         if (playersConnected == 4 && lastDeal.empty()) {
             lastDeal = hands;
             for (Side s: sides_) {
@@ -297,6 +303,12 @@ void Server::grandExitCallback(const ErrArr& errArr, int workerIx, Side side) {
     if (role == HANDLING_ACTIVE) {
         activeSides[side] = -1;
         playersConnected --;
+        if (playersConnected == 3) {
+            for (Side s: sides_) {
+                if (s == side) continue;
+                workerMgr.halt(activeSides[s]);
+            }
+        }
     }
     for (ErrInfo errInfo: errArr) {
         if (errInfo.errType != IO_ERR_NOERR) {
