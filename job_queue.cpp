@@ -3,6 +3,7 @@
 //
 
 #include "job_queue.h"
+#include "common_types.h"
 
 #include "mutex"
 #include "stdexcept"
@@ -10,6 +11,7 @@
 
 JobQueue::JobQueue():
     killFlag(false),
+    halt(false),
     jobsPending(),
     mutex()
 {}
@@ -23,34 +25,36 @@ SSendJob JobQueue::popNextJob() {
 }
 
 bool JobQueue::hasKillOrder() noexcept {
-    std::lock_guard<std::mutex> lock(mutex);
+    MutexGuard lock(mutex);
     return killFlag;
 }
 
-void JobQueue::pushNextJob(SSendJob job) {
-    std::lock_guard<std::mutex> lock(mutex);
+void JobQueue::pushNextJob(const SSendJob& job) {
+    MutexGuard lock(mutex);
     jobsPending.push(job);
 }
 
 bool JobQueue::hasNextJob() noexcept {
-    std::lock_guard<std::mutex> lock(mutex);
+    MutexGuard lock(mutex);
     return !jobsPending.empty();
 }
 
 void JobQueue::setKillOrder() noexcept {
-    std::lock_guard<std::mutex> lock(mutex);
+    MutexGuard lock(mutex);
     killFlag = true;
 }
 
 size_t JobQueue::jobCount() noexcept {
-    std::lock_guard<std::mutex> lock(mutex);
+    MutexGuard lock(mutex);
     return jobsPending.size();
 }
 
 void JobQueue::setStopped(bool val) noexcept {
+    MutexGuard lock(mutex);
     halt = val;
 }
 
 bool JobQueue::isStopped() noexcept {
+    MutexGuard lock(mutex);
     return halt;
 }
