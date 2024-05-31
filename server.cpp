@@ -292,6 +292,7 @@ void Server::forwardConnection(int fd, net_address conn_addr) {
 }
 
 void Server::finalize() {
+    exiting = true;
     workerMgr.releaseCleaner();
     workerMgr.finish();
 }
