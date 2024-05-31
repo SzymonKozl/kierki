@@ -38,7 +38,7 @@ enum GameStage {
 static std::random_device rd; // obtain a random number from hardware
 static std::mt19937 gen(rd()); // seed the generator
 static std::uniform_int_distribution<> dist(0, 50); // define the range
-static std::uniform_int_distribution<> sleepDist(0, 7);
+static std::uniform_int_distribution<> sleepDist(0, 6);
 
 void randomDisconnect_(int fd) {
     if (dist(gen) == 1) {
@@ -84,14 +84,17 @@ int Client::run() {
         delete (addr.addr.addr_in6);
     }
 
-    randomSleep();
-    randomDisconnect_(tcp_sock);
-
+    if (side != E) {
+        randomSleep();
+        randomDisconnect_(tcp_sock);
+    }
     SSendJob msgIam = std::static_pointer_cast<SendJob>(std::make_shared<SendJobIntro>(side));
     sendMessage(msgIam);
 
-    randomSleep();
-    randomDisconnect_(tcp_sock);
+    if (side != E) {
+        randomSleep();
+        randomDisconnect_(tcp_sock);
+    }
 
     pollfd poll_fds[] {
             {tcp_sock, POLLIN, 0},
@@ -110,7 +113,7 @@ int Client::run() {
         else {
             if (poll_fds[1].revents & (POLLERR | POLLHUP | POLLNVAL)) {
                 terminate = true;
-                std::cerr << "poll - stdin";
+                std::cerr << "poll - stdin" << errno;
             }
             else if (poll_fds[1].revents & POLLIN) {
                 char c;
@@ -132,7 +135,7 @@ int Client::run() {
             }
             else if (poll_fds[0].revents & (POLLERR | POLLHUP | POLLNVAL)) {
                 terminate = true;
-                std::cerr << "poll - tcp";
+                std::cerr << "poll - tcp " << errno << " " << poll_fds[1].revents;
             }
             else if (poll_fds[0].revents & POLLIN) {
                 char c;
@@ -157,8 +160,11 @@ int Client::run() {
                             player.dealMsg(type, hand, starting);
                         }
                         else if (msg_array[0].second == "TRICK_S") {
-                            randomSleep();
-                            randomDisconnect_(tcp_sock);
+
+                            if (side != E) {
+                                randomSleep();
+                                randomDisconnect_(tcp_sock);
+                            }
                             stage = AFTER_TRICK;
                             waitingForCard = true;
                             trickNo = atoi(msg_array[1].second.c_str());
@@ -169,7 +175,10 @@ int Client::run() {
                             player.trickMsg(trickNo, t);
                         }
                         else if (msg_array[0].second == "TAKEN") {
-                            randomSleep();
+
+                            if (side != E) {
+                                randomSleep();
+                            }
                             trickNo = atoi(msg_array[1].second.c_str());
                             Side s = (Side) msg_array[msg_array.size() - 1].second.at(0);
                             Table t;
@@ -179,7 +188,10 @@ int Client::run() {
                         else if (msg_array[0].second == "SCORE" || msg_array[0].second == "TOTAL") {
                             if (msg_array[0].second == "SCORE" ) stage = AFTER_SCORE;
                             else stage = AFTER_TOTAL;
-                            randomDisconnect_(tcp_sock);
+
+                            if (side != E) {
+                                randomDisconnect_(tcp_sock);
+                            }
                             bool total = msg_array[0].second == "TOTAL";
                             score_map res;
                             for (int i = 1; i <= 4; i ++) {
@@ -190,8 +202,11 @@ int Client::run() {
                             player.scoreMsg(res, total);
                         }
                         else if (msg_array[0].second == "WRONG") {
-                            randomSleep();
-                            randomDisconnect_(tcp_sock);
+
+                            if (side != E) {
+                                randomSleep();
+                                randomDisconnect_(tcp_sock);
+                            }
                             trickNo = atoi(msg_array[1].second.c_str());
                             waitingForCard = true;
                             player.wrongMsg(trickNo);
