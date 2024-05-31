@@ -33,6 +33,7 @@ public:
     void busyMsg(const std::vector<Side> &taken) override;
 
 private:
+    int nextTrick;
     Strategy strategy;
     chooseCardCb trickCb;
     Logger logger;

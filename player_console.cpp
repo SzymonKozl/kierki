@@ -22,6 +22,14 @@ void PlayerConsole::takenMsg(Side side, const Table &cards, int trickNo, bool ap
     if (apply) {
         rmIntersection(localHand, cards);
     }
+    else {
+        if (!lastCards.empty()) {
+            localHand.push_back(*lastCards.front());
+            lastCards.pop_front();
+        } else {
+            std::cerr << "warn: should remove card\n";
+        }
+    }
     std::cout << ".\n";
 }
 
@@ -47,10 +55,12 @@ void PlayerConsole::dealMsg(int trickMode, const Hand& hand, Side starting) {
 
 void PlayerConsole::wrongMsg(int trickNo) {
     std::cout << "Wrong message received in trick " << trickNo << ".\n";
-    if (lastCardGiven.use_count()) {
-        Card t = *lastCardGiven;
-        localHand.emplace_back(t.getValue(), t.getColor());
-        lastCardGiven.reset();
+    if (!lastCards.empty()) {
+        localHand.push_back(*lastCards.front());
+        lastCards.pop_front();
+    }
+    else {
+        std::cerr << "warn: should remove card\n";
     }
 }
 
@@ -76,7 +86,7 @@ void PlayerConsole::anyCmd(std::string msg) {
                 return;
             }
             rmCardIfPresent(localHand, c);
-            lastCardGiven = std::make_shared<Card>(c.getValue(), c.getColor());
+            lastCards.push_back(std::make_shared<Card>(c.getValue(), c.getColor()));
             putCb(c);
         } catch (...) {
             std::cout << msg.substr(1) << " is not a valid card!\n" << std::flush;

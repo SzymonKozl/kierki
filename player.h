@@ -11,6 +11,7 @@
 #include "unordered_map"
 #include "functional"
 #include "vector"
+#include "queue"
 
 using putCardCb = std::function<void(Card)>;
 using cardNeededCb = std::function<bool()>;
@@ -28,7 +29,7 @@ public:
     virtual void anyMsg(Message message) = 0;
     virtual void anyCmd(std::string msg) = 0;
 protected:
-    sCard lastCardGiven;
+    std::deque<sCard> lastCards;
     putCardCb putCb;
     cardNeededCb checkCardCb;
 };
