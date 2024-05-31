@@ -87,7 +87,7 @@ int Client::run() {
         else {
             if (poll_fds[1].revents & (POLLERR | POLLHUP | POLLNVAL)) {
                 terminate = true;
-                std::cerr << "poll - stdin";
+                std::cerr << "poll - stdin" << errno;
             }
             else if (poll_fds[1].revents & POLLIN) {
                 char c;
@@ -109,7 +109,7 @@ int Client::run() {
             }
             else if (poll_fds[0].revents & (POLLERR | POLLHUP | POLLNVAL)) {
                 terminate = true;
-                std::cerr << "poll - tcp";
+                std::cerr << "poll - tcp " << errno << " " << poll_fds[1].revents;
             }
             else if (poll_fds[0].revents & POLLIN) {
                 char c;
@@ -238,7 +238,6 @@ Client::Client(Player &player, net_address connectTo, Side side, sa_family_t pro
         serverAddr(std::move(connectTo)),
         waitingForCard(false),
         selectedCard("3", COLOR_H),
-        lastGivenCard("3", COLOR_H),
         side(side),
         trickNo(1),
         proto(proto),

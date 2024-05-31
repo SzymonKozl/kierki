@@ -23,7 +23,7 @@ public:
 
     void setKillOrder() noexcept;
 
-    void pushNextJob(SSendJob job);
+    void pushNextJob(const SSendJob& job);
 
     void setStopped(bool val) noexcept;
 

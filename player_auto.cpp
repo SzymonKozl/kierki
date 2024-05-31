@@ -12,6 +12,7 @@
 
 PlayerAuto::PlayerAuto():
     Player(),
+    nextTrick(0),
     strategy(std::vector<Card>(), TRICK_PENALTY),
     trickCb(),
     logger(std::cout, false)
@@ -20,19 +21,26 @@ PlayerAuto::PlayerAuto():
 void PlayerAuto::scoreMsg(const std::unordered_map<Side, int> scores, bool total) {}
 
 void PlayerAuto::trickMsg(int trickNo, const Table &table) {
+    if (trickNo < nextTrick) return;
+    nextTrick ++;
     Card c = strategy.nextMove(table);
-    lastCardGiven = std::make_shared<Card>(c.getValue(), c.getColor());
+    lastCards.push_back(std::make_shared<Card>(c.getValue(), c.getColor()));
     putCb(c);
 }
 
 void PlayerAuto::dealMsg(int trickMode, const Hand& hand, Side starting) {
+    nextTrick = 1;
     strategy.reset(hand, trickMode);
 }
 
 void PlayerAuto::wrongMsg(int trickNo) {
-    if (lastCardGiven.use_count()) {
-        strategy.accHand().push_back(*lastCardGiven);
-        lastCardGiven.reset();
+    nextTrick = trickNo;
+    if (!lastCards.empty()) {
+        strategy.accHand().push_back(*lastCards.front());
+        lastCards.pop_front();
+    }
+    else {
+        std::cerr << "warn: should remove card\n";
     }
 }
 
@@ -51,6 +59,14 @@ void PlayerAuto::setTrickCb(chooseCardCb &&trick_callback) {
 void PlayerAuto::takenMsg(Side side, const Table &cards, int trickNo, bool apply) {
     if (apply) {
         rmIntersection(strategy.accHand(), cards);
+    }
+    else {
+        if (!lastCards.empty()) {
+            lastCards.pop_front();
+        }
+        else {
+            std::cerr << "warn: should remove card\n";
+        }
     }
 }
 

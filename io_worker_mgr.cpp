@@ -67,7 +67,7 @@ void IOWorkerMgr::finish() {
 
 void IOWorkerMgr::sendJob(SSendJob job, int ix) {
     MutexGuard lock(threadsStructuresMutex);
-    workers.at(ix)->newJob(std::move(job));
+    workers.at(ix)->newJob(job);
     signal(ix);
 }
 
@@ -126,4 +126,14 @@ void IOWorkerMgr::setRole(int ix, WorkerRole role) {
 WorkerRole IOWorkerMgr::getRole(int ix) {
     MutexGuard lock(threadsStructuresMutex);
     return roles.at(ix);
+}
+
+void IOWorkerMgr::halt(int ix) {
+    MutexGuard lock(threadsStructuresMutex);
+    workers[ix]->halt();
+}
+
+void IOWorkerMgr::unhalt(int ix) {
+    MutexGuard lock(threadsStructuresMutex);
+    workers[ix]->unhalt();
 }
