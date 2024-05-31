@@ -152,7 +152,9 @@ int Client::run() {
                         resp_array msg_array = parse_msg(msg, false);
                         if (msg_array[0].second == "DEAL") {
                             stage = (stage == PRE) ? AFTER_FIRST_DEAL : AFTER_DEAL;
-                            randomDisconnect_(tcp_sock);
+                            if (side != E) {
+                                randomDisconnect_(tcp_sock);
+                            }
                             auto type = (RoundType) (msg_array[1].second.at(0) - '0');
                             Hand hand;
                             for (int i = 3; i < 16; i ++) hand.push_back(Card::fromString(msg_array[i].second));
