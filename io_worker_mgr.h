@@ -7,6 +7,7 @@
 
 #include "io_worker.h"
 #include "constants.h"
+#include "job_queue.h"
 
 #include "unordered_map"
 #include "concepts"
@@ -16,6 +17,7 @@
 #include "memory"
 #include "mutex"
 #include "semaphore"
+#include "condition_variable"
 
 enum WorkerRole {
     HANDLING_ACTIVE,
@@ -39,24 +41,34 @@ public:
     void clearPipes(int ix);
     void setRole(int ix, WorkerRole role);
     WorkerRole getRole(int ix);
+    void halt(std::initializer_list<int> toNotify);
+    void release(std::initializer_list<Side> toNotify);
+    void sendHalt(int ix);
     explicit IOWorkerMgr(IOWorkerMgrPipeCb &&pipeCb);
     ~IOWorkerMgr();
 private:
     using Sjthread = std::shared_ptr<std::jthread>;
 
+    friend JobQueue;
+
     void signal(int ix);
+    void haltedWait(Side side);
 
     std::unordered_map<int, SIOWorker> workers;
     std::unordered_map<int, std::pair<int, int>> pipes;
     std::unordered_map<int, Sjthread> threads;
     std::unordered_map<int, WorkerRole> roles;
+    std::unordered_map<Side, bool> wakeToken;
     int nextIx;
     IOWorkerMgrPipeCb pipeCb;
 
     std::binary_semaphore clearThreadsSemaphore;
     std::mutex threadsStructuresMutex;
+    std::mutex haltedMutex;
+    std::condition_variable haltedCv;
     std::vector<int> toErase;
     bool finishFlag;
+    bool globalHalt;
 };
 
 template<class T, class ...Args>

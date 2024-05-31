@@ -10,18 +10,23 @@
 #include "cerrno"
 #include "thread"
 #include "memory"
+#include "initializer_list"
 
 
 IOWorkerMgr::IOWorkerMgr(IOWorkerMgrPipeCb &&pipeCb):
         workers(),
         pipes(),
         threads(),
+        wakeToken(),
         nextIx(0),
         pipeCb(pipeCb),
         clearThreadsSemaphore{0},
         threadsStructuresMutex(),
+        haltedMutex(),
+        haltedCv(),
         toErase(),
-        finishFlag(false)
+        finishFlag(false),
+        globalHalt(false)
 {}
 
 IOWorkerMgr::~IOWorkerMgr() {
@@ -126,4 +131,34 @@ void IOWorkerMgr::setRole(int ix, WorkerRole role) {
 WorkerRole IOWorkerMgr::getRole(int ix) {
     MutexGuard lock(threadsStructuresMutex);
     return roles.at(ix);
+}
+
+void IOWorkerMgr::halt(std::initializer_list<int> toNotify) {
+    MutexGuard lock(haltedMutex);
+    globalHalt = true;
+    for (Side s: sides_) wakeToken[s] = false;
+    for (int ix: toNotify) {
+        workers[ix]->halt();
+        signal(ix);
+    }
+}
+
+void IOWorkerMgr::release(std::initializer_list<Side> toNotify) {
+    MutexGuard lock(haltedMutex);
+    globalHalt = false;
+    for (Side s: sides_) {
+        wakeToken[s] = true;
+    }
+}
+
+void IOWorkerMgr::haltedWait(Side side) {
+    std::unique_lock<std::mutex> lock(haltedMutex);
+    if (!globalHalt) return;
+    haltedCv.wait(lock, [this, side] {return this->wakeToken[side];});
+}
+
+void IOWorkerMgr::sendHalt(int ix) {
+    MutexGuard lock(threadsStructuresMutex);
+    workers[ix]->halt();
+    signal(ix);
 }
