@@ -20,7 +20,6 @@ public:
     bool isWaitingForCard() const noexcept;
 private:
     static int makeConnection(sa_family_t proto);
-    void printErr(const std::string& call);
 
     int tcp_sock;
     Player &player;
