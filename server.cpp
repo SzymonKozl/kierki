@@ -59,7 +59,7 @@ void Server::run() {
     workerMgr.spawnNewWorker<IOWorkerConnect>(
         INCOMING_PROXY,
         tcp_listen_sock,
-        [this](const ErrArr& arr, int ix, int msgsLeft) { return this->grandExitCallback(arr, ix, msgsLeft);},
+        [this](ErrArr arr, int ix, int msgsLeft) { return this->grandExitCallback(arr, ix, msgsLeft);},
         [this](int ix) {this->workerMgr.clearPipes(ix);},
         [this](int ix) {this->handleTimeout(ix);},
         [this](std::function<void()> inv) {return this->execMutexed(std::move(inv));},
@@ -221,8 +221,9 @@ bool Server::playerTricked(int trickNoArg, Card card, int workerIx) {
 }
 
 void Server::playerIntro(Side side, int workerIx) {
-    if (exiting) return;
     MutexGuard lock(gameStateMutex);
+    if (exiting) return;
+    allIntroduced.insert(workerIx);
     if (activeSides[side] == -1) {
         // accepting new client
         activeSides[side] = workerIx;
@@ -308,7 +309,7 @@ void Server::forwardConnection(int fd, net_address conn_addr) {
     workerMgr.spawnNewWorker<IOWorkerHandler>(
             HANDLING_UNKNOWN,
             fd,
-            [this] (const ErrArr& errs, int ix, int msgsLeft) { return this->grandExitCallback(errs, ix, msgsLeft);},
+            [this] (ErrArr errs, int ix, int msgsLeft) { return this->grandExitCallback(errs, ix, msgsLeft);},
             [this] (int ix) {this->workerMgr.clearPipes(ix);},
             [this](int ix) {this->handleTimeout(ix);},
             [this](std::function<void()> inv) {return this->execMutexed(std::move(inv));},
@@ -392,7 +393,12 @@ bool Server::execMutexed(std::function<void()> invokable) {
 void Server::handleTimeout(int workerIx) {
     MutexGuard lock(gameStateMutex);
     if (exiting) return;
-    if (workerToSide.find(workerIx) == workerToSide.end()) return;
+    if (workerToSide.find(workerIx) == workerToSide.end()) {
+        if (allIntroduced.find(workerIx) == allIntroduced.end()) {
+            workerMgr.sendKill(workerIx);
+            return;
+        }
+    }
     if (nextMove != workerToSide[workerIx]) return;
     if (playersConnected < 4) {
         expectedTrickResponse = false;
