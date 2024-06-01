@@ -46,12 +46,7 @@ int Client::run() {
 
     proto = sockAddr->sa_family;
 
-    try {
-        tcp_sock = makeConnection(proto);
-    } catch (std::runtime_error &e) {
-        std::cerr << "Error on" << e.what();
-        exit(1);
-    }
+    tcp_sock = makeConnection(proto);
     //fcntl(tcp_sock, F_SETFL, fcntl(tcp_sock, F_GETFL) | O_NONBLOCK);
 
     ownAddr = getAddrStruct(tcp_sock, proto);
@@ -66,10 +61,8 @@ int Client::run() {
     else {
         delete (addr.addr.addr_in6);
     }
-
     SSendJob msgIam = std::static_pointer_cast<SendJob>(std::make_shared<SendJobIntro>(side));
     sendMessage(msgIam);
-
     pollfd poll_fds[] {
             {tcp_sock, POLLIN, 0},
             {0, POLLIN, 0}
@@ -81,13 +74,11 @@ int Client::run() {
         poll_fds[1].revents = 0;
         int poll_status = poll(poll_fds, 2, -1);
         if (poll_status < 0) {
-            terminate = true;
-            std::cerr << "poll";
+            throw std::runtime_error("poll");
         }
         else {
             if (poll_fds[1].revents & (POLLERR | POLLHUP | POLLNVAL)) {
-                terminate = true;
-                std::cerr << "poll - stdin" << errno;
+                throw std::runtime_error("poll on stdin");
             }
             else if (poll_fds[1].revents & POLLIN) {
                 char c;
@@ -101,15 +92,12 @@ int Client::run() {
                 }
                 if (r == -1) {
                     if (errno != EAGAIN && errno != EWOULDBLOCK) {
-                        terminate = true;
-                        exitFlag = 1;
-                        break;
+                        throw std::runtime_error("read on stdin");
                     }
                 }
             }
             else if (poll_fds[0].revents & (POLLERR | POLLHUP | POLLNVAL)) {
-                terminate = true;
-                std::cerr << "poll - tcp " << errno << " " << poll_fds[1].revents;
+                throw std::runtime_error("poll on tcp sock");
             }
             else if (poll_fds[0].revents & POLLIN) {
                 char c;
@@ -155,9 +143,9 @@ int Client::run() {
                             bool total = msg_array[0].second == "TOTAL";
                             score_map res;
                             for (int i = 1; i <= 4; i ++) {
-                                Side side = (Side) msg_array[2 * i - 1].second.at(0);
+                                Side s = (Side) msg_array[2 * i - 1].second.at(0);
                                 int score = atoi(msg_array[2 * i].second.c_str());
-                                res[side] = score;
+                                res[s] = score;
                             }
                             player.scoreMsg(res, total);
                         }
@@ -172,21 +160,19 @@ int Client::run() {
                                 taken.push_back((Side) msg_array[j].second.at(0));
                             }
                             player.busyMsg(taken);
+                            exitFlag = 1;
                             terminate = true;
+                            break;
                         }
                     }
                 }
                 if (r < 0) {
-                    if (errno == EWOULDBLOCK || errno == EAGAIN) {
-                        errno = 0;
-                    }
-                    else {
-                        exitFlag = 1;
-                        terminate = true;
+                    if (errno != EWOULDBLOCK && errno != EAGAIN) {
+                        throw std::runtime_error("read on tcp sock");
                     }
                 }
                 else if (!r) {
-                    exitFlag = 0;
+                    exitFlag = stage != AFTER_TOTAL;
                     terminate = true;
                 }
             }
@@ -254,8 +240,4 @@ void Client::sendMessage(const SSendJob& job) const {
 
 bool Client::isWaitingForCard() const noexcept {
     return waitingForCard;
-}
-
-void Client::printErr(const std::string& call) {
-    std::cout << "System error on call " << call << ". Errno=" << errno << std::endl;
 }

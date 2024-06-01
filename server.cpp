@@ -40,7 +40,11 @@ Server::Server(game_scenario &&scenario, uint16_t port, int timeout):
     takenInRound(),
     exiting(false),
     timeout(timeout),
-    msgLogger(std::cout, false)
+    msgLogger(std::cout, false),
+    workerToSide(),
+    zombieWorkerToSide(),
+    zombieWorkers(),
+    expectedTrickResponse(false)
 {
     for (Side s: {W, E, S, N}) {
         activeSides[s] = -1;
@@ -55,11 +59,13 @@ void Server::run() {
     workerMgr.spawnNewWorker<IOWorkerConnect>(
         INCOMING_PROXY,
         tcp_listen_sock,
-        [this](const ErrArr& arr, int ix, Side side) { this->grandExitCallback(arr, ix, side);},
+        [this](ErrArr arr, int ix, int msgsLeft) { return this->grandExitCallback(arr, ix, msgsLeft);},
         [this](int ix) {this->workerMgr.clearPipes(ix);},
+        [this](int ix) {this->handleTimeout(ix);},
+        [this](std::function<void()> inv) {return this->execMutexed(std::move(inv));},
         [this](int fd, net_address conn_addr) { this->forwardConnection(fd, std::move(conn_addr));},
-        std::ref(msgLogger),
-        own_addr
+        own_addr,
+        std::ref(msgLogger)
     );
     workerMgr.waitForClearing();
     exit(exitCode);
@@ -138,15 +144,37 @@ void Server::prepareRound() {
     takenInRound.clear();
 }
 
-void Server::playerTricked(Side side, Card card, size_t trickNoArg) {
+bool Server::playerTricked(int trickNoArg, Card card, int workerIx) {
     MutexGuard lock(gameStateMutex);
-    if (trickNoArg != trickNo || playersConnected < 4 || nextMove != side) {
+    Side side;
+    if (workerToSide.find(workerIx) != workerToSide.end() ) {
+        side = workerToSide[workerIx];
+    }
+    else if (zombieWorkerToSide.find(workerIx) != zombieWorkerToSide.end()) {
+        side = zombieWorkerToSide[workerIx];
+    }
+    else if (trickNoArg == -1) {
+        side = SIDE_NULL_;
+    }
+    else {
+        workerMgr.sendKill(workerIx);
+        return true;
+    }
+    if (playersConnected < 4) {
+        return false;
+    }
+    else if (side == SIDE_NULL_) {
+        workerMgr.sendKill(workerIx);
+        return true;
+    }
+    if (trickNoArg != trickNo || nextMove != side) {
         workerMgr.sendJob(std::static_pointer_cast<SendJob>(std::make_shared<SendJobWrong>(trickNo, true)), activeSides[side]);
-        return;
+        return true;
     }
     else if (!GameRules::isMoveLegal(side, card, hands, table)){
         workerMgr.sendJob(std::static_pointer_cast<SendJob>(std::make_shared<SendJobWrong>(trickNo, false)), activeSides[side]);
-        return;
+        expectedTrickResponse = true;
+        return true;
     }
 
     table.push_back(card);
@@ -176,7 +204,7 @@ void Server::playerTricked(Side side, Card card, size_t trickNoArg) {
             roundNumber ++;
             if (roundNumber == gameScenario.size()) {
                 finalize();
-                return;
+                return true;
             }
             prepareRound();
             lastDeal = hands;
@@ -187,21 +215,21 @@ void Server::playerTricked(Side side, Card card, size_t trickNoArg) {
         }
     }
     workerMgr.sendJob(std::make_shared<SendJobTrick>(table, trickNo, true), activeSides[nextMove]);
+    expectedTrickResponse = true;
+
+    return true;
 }
 
 void Server::playerIntro(Side side, int workerIx) {
     MutexGuard lock(gameStateMutex);
+    if (exiting) return;
+    allIntroduced.insert(workerIx);
     if (activeSides[side] == -1) {
         // accepting new client
         activeSides[side] = workerIx;
+        workerToSide[workerIx] = side;
         workerMgr.setRole(workerIx, HANDLING_ACTIVE);
         playersConnected ++;
-        if (playersConnected == 4) {
-            for (Side s: sides_) {
-                if (s == side) continue;
-                workerMgr.unhalt(activeSides[s]);
-            }
-        }
         if (playersConnected == 4 && lastDeal.empty()) {
             lastDeal = hands;
             for (Side s: sides_) {
@@ -210,6 +238,7 @@ void Server::playerIntro(Side side, int workerIx) {
             }
             SSendJob msgTrick = std::static_pointer_cast<SendJob>(std::make_shared<SendJobTrick>(table, trickNo, true));
             workerMgr.sendJob(msgTrick, activeSides[nextMove]);
+            expectedTrickResponse = true;
         }
         else if (!lastDeal.empty()) {
             SSendJob msgDeal = std::static_pointer_cast<SendJob>(std::make_shared<SendDealJob>(roundMode, nextMove, lastDeal[side]));
@@ -218,6 +247,10 @@ void Server::playerIntro(Side side, int workerIx) {
                 workerMgr.sendJob(msg, workerIx);
             }
             if (playersConnected == 4) {
+                for (Side s: sides_) {
+                    if (s == side) continue;
+                    workerMgr.signal(activeSides[s]);
+                }
                 SSendJob msgTrick = std::static_pointer_cast<SendJob>(std::make_shared<SendJobTrick>(table, trickNo, true));
                 workerMgr.sendJob(msgTrick, activeSides[nextMove]);
             }
@@ -276,18 +309,16 @@ void Server::forwardConnection(int fd, net_address conn_addr) {
     workerMgr.spawnNewWorker<IOWorkerHandler>(
             HANDLING_UNKNOWN,
             fd,
-            [this] (const ErrArr& errs, int ix, Side side) { this->grandExitCallback(errs, ix, side);},
+            [this] (ErrArr errs, int ix, int msgsLeft) { return this->grandExitCallback(errs, ix, msgsLeft);},
             [this] (int ix) {this->workerMgr.clearPipes(ix);},
+            [this](int ix) {this->handleTimeout(ix);},
+            [this](std::function<void()> inv) {return this->execMutexed(std::move(inv));},
             [this] (Side s, int ix) { this->playerIntro(s, ix);},
-            [this] (int t, Side s, const Card& c) { this->playerTricked(s, c, t);},
-            [this] (int ix, SSendJob msg) {
-                MutexGuard lock(this->gameStateMutex);
-                this->workerMgr.sendJob(std::move(msg), ix);
-            },
+            [this] (int t, const Card& c, int ix) { return this->playerTricked(t, c, ix);},
             std::move(conn_addr),
             own_addr,
-            std::ref(msgLogger),
-            timeout
+            timeout,
+            std::ref(msgLogger)
             );
 }
 
@@ -297,32 +328,83 @@ void Server::finalize() {
     workerMgr.finish();
 }
 
-void Server::grandExitCallback(const ErrArr& errArr, int workerIx, Side side) {
+bool Server::grandExitCallback(const ErrArr& errArr, int workerIx, size_t msgsLeft) {
     MutexGuard lock(gameStateMutex);
-    if (exiting) return;
-    WorkerRole role = workerMgr.getRole(workerIx);
-    if (role == HANDLING_ACTIVE) {
-        activeSides[side] = -1;
-        playersConnected --;
-        if (playersConnected == 3) {
-            for (Side s: sides_) {
-                if (s == side) continue;
-                workerMgr.halt(activeSides[s]);
-            }
-        }
+    if (exiting) {
+        workerMgr.eraseWorker(workerIx);
+        return true;
     }
-    for (ErrInfo errInfo: errArr) {
-        if (errInfo.errType != IO_ERR_NOERR) {
-            auto [call, error, type] = errInfo;
+    else {
+        for (ErrInfo const& err: errArr) {
+            auto [call, error, type] = err;
             std::cerr << "System error on " << call << " call! Error code: " << error << std::endl;
             if (type == IO_ERR_INTERNAL) {
                 exiting = true;
                 exitCode = 1;
                 std::cerr << "internal error! quitting server";
                 finalize();
-                return;
+                return true;
+            }
+        }
+        if (workerToSide.find(workerIx) != workerToSide.end()) {
+            Side s = workerToSide[workerIx];
+            if (s == nextMove) {
+                expectedTrickResponse = false;
+            }
+            activeSides[s] = -1;
+            playersConnected --;
+            workerToSide.erase(workerIx);
+            if (msgsLeft == 0) {
+                workerMgr.eraseWorker(workerIx);
+                return true;
+            }
+            zombieWorkerToSide[workerIx] = workerToSide[workerIx];
+            zombieWorkers.insert(workerIx);
+            return false;
+        }
+        else {
+            if (workerIx == 0) { // todo: make implementation independent
+                exiting = true;
+                exitCode = 1;
+                finalize();
+                return true;
+            }
+            if (zombieWorkers.find(workerIx) == zombieWorkers.end()) {
+                workerMgr.eraseWorker(workerIx);
+                return true;
+            }
+            if (msgsLeft == 0) {
+                zombieWorkers.erase(workerIx);
+                zombieWorkerToSide.erase(workerIx);
+                workerMgr.eraseWorker(workerIx);
+                return true;
             }
         }
     }
-    workerMgr.eraseWorker(workerIx);
+}
+
+bool Server::execMutexed(std::function<void()> invokable) {
+    MutexGuard lock(gameStateMutex);
+    if (playersConnected < 4 && !exiting) return false;
+    invokable();
+    return true;
+}
+
+void Server::handleTimeout(int workerIx) {
+    MutexGuard lock(gameStateMutex);
+    if (exiting) return;
+    if (workerToSide.find(workerIx) == workerToSide.end()) {
+        if (allIntroduced.find(workerIx) == allIntroduced.end()) {
+            workerMgr.sendKill(workerIx);
+            return;
+        }
+    }
+    if (nextMove != workerToSide[workerIx]) return;
+    if (playersConnected < 4) {
+        expectedTrickResponse = false;
+        return;
+    }
+    SSendJob msgTrick = std::static_pointer_cast<SendJob>(std::make_shared<SendJobTrick>(table, trickNo, true));
+    workerMgr.sendJob(msgTrick, workerIx);
+    expectedTrickResponse = true;
 }

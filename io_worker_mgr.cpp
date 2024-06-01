@@ -2,6 +2,7 @@
 // Created by szymon on 12.05.24.
 //
 
+#include <iostream>
 #include "io_worker_mgr.h"
 #include "constants.h"
 #include "common_types.h"
@@ -33,11 +34,21 @@ IOWorkerMgr::~IOWorkerMgr() {
     }
 }
 
-void IOWorkerMgr::signal(int ix) {
-    char buff = 42;
-    ssize_t ret = write(pipes[ix].first, &buff, 1);
-    if (ret < 0) {
-        pipeCb({"write", errno, IO_ERR_INTERNAL});
+void IOWorkerMgr::signal(int ix, bool locked) {
+    if (locked) {
+        char buff = 42;
+        ssize_t ret = write(pipes[ix].first, &buff, 1);
+        if (ret < 0) {
+            pipeCb({"write", errno, IO_ERR_INTERNAL});
+        }
+    }
+    else {
+        MutexGuard lock(threadsStructuresMutex);
+        char buff = 42;
+        ssize_t ret = write(pipes[ix].first, &buff, 1);
+        if (ret < 0) {
+            pipeCb({"write", errno, IO_ERR_INTERNAL});
+        }
     }
 }
 
@@ -126,14 +137,4 @@ void IOWorkerMgr::setRole(int ix, WorkerRole role) {
 WorkerRole IOWorkerMgr::getRole(int ix) {
     MutexGuard lock(threadsStructuresMutex);
     return roles.at(ix);
-}
-
-void IOWorkerMgr::halt(int ix) {
-    MutexGuard lock(threadsStructuresMutex);
-    workers[ix]->halt();
-}
-
-void IOWorkerMgr::unhalt(int ix) {
-    MutexGuard lock(threadsStructuresMutex);
-    workers[ix]->unhalt();
 }

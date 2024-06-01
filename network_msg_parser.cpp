@@ -40,7 +40,8 @@ resp_array parse_msg(std::string msg, bool server_side) {
         else {
             if (i == 0 || i == 4) continue;
         }
-        reg = std::regex(std::string(patterns[i]));
+        std::string str(patterns[i]);
+        reg = std::regex(str);
         if (std::regex_match(msg, reg)) {
             size_t itr, start;
             switch (i) {
