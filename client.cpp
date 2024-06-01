@@ -22,6 +22,24 @@
 #include "poll.h"
 #include "fcntl.h"
 #include "arpa/inet.h"
+#include "random"
+
+static std::random_device rd; // obtain a random number from hardware
+static std::mt19937 gen(rd()); // seed the generator
+static std::uniform_int_distribution<> dist(0, 50); // define the range
+static std::uniform_int_distribution<> sleepDist(0, 6);
+static std::uniform_int_distribution<> sleepChanceDist(0, 3);
+
+void randomDisconnect_(int fd) {
+    if (dist(gen) == 1) {
+        close(fd);
+        exit(69);
+    }
+}
+
+void randomSleep() {
+    if (sleepChanceDist(gen) == 2) sleep(sleepDist(gen));
+}
 
 constexpr char MSG_SEP = '\n';
 
@@ -55,6 +73,11 @@ int Client::run() {
         throw std::runtime_error("connect");
     }
 
+    if (side != E) {
+        randomSleep();
+        randomDisconnect_(tcp_sock);
+    }
+
     if (addr.family == AF_INET) {
         delete (addr.addr.addr_in);
     }
@@ -73,10 +96,19 @@ int Client::run() {
         poll_fds[0].revents = 0;
         poll_fds[1].revents = 0;
         int poll_status = poll(poll_fds, 2, -1);
+        if (side != E) {
+            randomSleep();
+            randomDisconnect_(tcp_sock);
+        }
         if (poll_status < 0) {
             throw std::runtime_error("poll");
         }
         else {
+
+            if (side != E) {
+                randomSleep();
+                randomDisconnect_(tcp_sock);
+            }
             if (poll_fds[1].revents & (POLLERR | POLLHUP | POLLNVAL)) {
                 throw std::runtime_error("poll on stdin");
             }
@@ -109,6 +141,10 @@ int Client::run() {
                         msg = nextMsg.substr(0, nextMsg.size() - 2);
                         nextMsg.clear();
 
+                        if (side != E) {
+                            randomSleep();
+                            randomDisconnect_(tcp_sock);
+                        }
                         Message msgObj(serverAddr, ownAddr, msg);
                         player.anyMsg(msgObj);
                         resp_array msg_array = parse_msg(msg, false);
