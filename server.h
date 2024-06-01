@@ -11,8 +11,10 @@
 #include "logger.h"
 
 #include "unordered_map"
+#include "unordered_set"
 #include "mutex"
 #include "string"
+#include "functional"
 
 using active_map = std::unordered_map<Side, int>;
 
@@ -23,7 +25,7 @@ public:
 private:
     bool furtherMovesNeeded() noexcept;
     void handleSysErr(ErrInfo info);
-    void playerTricked(Side side, Card card, size_t trickNoArg);
+    bool playerTricked(int trickNoArg, Card card, int workerIx);
     void playerIntro(Side side, int workerIx);
     void prepareRound();
     void forwardConnection(int fd, net_address conn_addr);
@@ -33,7 +35,9 @@ private:
     void clearTmpPenalties();
     void playerDisconnected(Side s, ErrInfo info);
     void finalize();
-    void grandExitCallback(const ErrArr& errArr, int workerIx, Side side = SIDE_NULL_); // temporary name
+    bool grandExitCallback(const ErrArr& errArr, int workerIx, size_t msgsLeft);
+    bool execMutexed(std::function<void()> invokable);
+    void handleTimeout(int workerIx);
 
     game_scenario gameScenario;
     IOWorkerMgr workerMgr;
@@ -55,6 +59,11 @@ private:
     bool exiting;
     int timeout;
     Logger msgLogger;
+    std::unordered_map<int, Side> workerToSide;
+    std::unordered_map<int, Side> zombieWorkerToSide;
+    std::unordered_set<int> zombieWorkers;
+    std::unordered_set<int> allIntroduced;
+    bool expectedTrickResponse;
 };
 
 

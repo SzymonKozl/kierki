@@ -14,9 +14,12 @@
 #include "string"
 #include "chrono"
 #include "memory"
+#include "queue"
 
-using IOWorkerExitCb = std::function<void(ErrArr, int, Side)>;
+using IOWorkerExitCb = std::function<int(ErrArr, int, size_t)>;
 using IOWorkerPipeCloseCb = std::function<void(int)>;
+using IOWorkerTimeoutCb = std::function<void(int)>;
+using IOWorkerExecuteSafeCb = std::function<bool(std::function<void()>)>;
 
 class IOWorker {
 public:
@@ -26,54 +29,50 @@ public:
 
     void scheduleDeath();
 
-    void halt();
-
-    void unhalt();
-
     IOWorker(
             int pipe_fd,
             int id,
             int sock_fd,
             IOWorkerExitCb exit_callback,
             IOWorkerPipeCloseCb pipe_close_callback,
+            IOWorkerTimeoutCb timeout_callback,
+            IOWorkerExecuteSafeCb exec_callback,
             int mainSockErr,
-            Side side,
-            Logger& logger,
             net_address ownAddr,
             net_address clientAddr,
-            int timeout
+            int timeout,
+            Logger& logger
         );
 
     ~IOWorker();
 
 protected:
-    virtual void pollAction() = 0;
-    virtual void quitAction() = 0;
-    virtual void timeoutAction() = 0;
-    void informAboutError();
+    virtual void socketAction() = 0;
+
+    void handlePipe();
+    void handleQueue();
 
     int id;
+    bool wantToToQuit;
     bool terminate;
     const int main_fd;
     const int pipe_fd;
     JobQueue jobQueue;
     IOWorkerExitCb exitCb;
+    IOWorkerTimeoutCb timeoutCb;
     IOWorkerPipeCloseCb pipeCb;
+    IOWorkerExecuteSafeCb execCb;
     ErrArr errs;
     int mainSockErr;
-    Side side;
     bool closedFd;
-    Logger& logger;
     net_address ownAddr;
     net_address clientAddr;
-    bool waitingForResponse;
-    SSendJob lastMsgSent;
     std::shared_ptr<std::chrono::time_point<std::chrono::system_clock>> responseTimeout;
     int timeout;
-
-private:
-    void handleQueue();
-    void handlePipe();
+    int nextTimeout;
+    std::queue<std::string> pendingIncoming;
+    std::queue<SSendJob> pendingOutgoing;
+    Logger& logger;
 };
 
 using SIOWorker = std::shared_ptr<IOWorker>;

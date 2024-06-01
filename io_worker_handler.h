@@ -13,8 +13,7 @@
 #include "functional"
 
 using IOWorkerIntroCb = std::function<void(Side, int)>;
-using IOWrokerTrickCb = std::function<void(int, Side, Card)>;
-using IOWorkerRepeatOnTiemoutCb = std::function<void(int, SSendJob)>;
+using IOWrokerTrickCb = std::function<bool(int, Card, int)>;
 
 class IOWorkerHandler: public IOWorker {
 public:
@@ -24,23 +23,21 @@ public:
             int sock_fd,
             IOWorkerExitCb exit_callback,
             IOWorkerPipeCloseCb pipe_close_callback,
+            IOWorkerTimeoutCb timeout_callback,
+            IOWorkerExecuteSafeCb exec_callback,
             IOWorkerIntroCb intro_callback,
             IOWrokerTrickCb trick_callback,
-            IOWorkerRepeatOnTiemoutCb repeat_callback,
             const net_address& clientAddr,
             const net_address& own_addr,
-            Logger& logger,
-            int timeout
+            int timeout,
+            Logger& logger
             );
 private:
-    void pollAction() override;
-    void quitAction() override;
-    void timeoutAction() override;
+    void socketAction() override;
 
     IOWrokerTrickCb trickCb;
     IOWorkerIntroCb introCb;
-    IOWorkerRepeatOnTiemoutCb repeatCb;
-    bool introduced;
+    std::string nextIncoming;
 };
 
 

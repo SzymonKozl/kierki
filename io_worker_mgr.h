@@ -38,15 +38,12 @@ public:
     void releaseCleaner();
     void clearPipes(int ix);
     void setRole(int ix, WorkerRole role);
+    void signal(int ix, bool locked = true);
     WorkerRole getRole(int ix);
-    void halt(int ix);
-    void unhalt(int ix);
     explicit IOWorkerMgr(IOWorkerMgrPipeCb &&pipeCb);
     ~IOWorkerMgr();
 private:
     using Sjthread = std::shared_ptr<std::jthread>;
-
-    void signal(int ix);
 
     std::unordered_map<int, SIOWorker> workers;
     std::unordered_map<int, std::pair<int, int>> pipes;
