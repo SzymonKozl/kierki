@@ -22,7 +22,7 @@ void PlayerAuto::scoreMsg(const std::unordered_map<Side, int> scores, bool total
 
 void PlayerAuto::trickMsg(int trickNo, const Table &table) {
     if (trickNo < nextTrick) return;
-    nextTrick ++;
+    nextTrick = trickNo + 1;
     Card c = strategy.nextMove(table);
     lastCards.push_back(std::make_shared<Card>(c.getValue(), c.getColor()));
     putCb(c);
@@ -57,6 +57,7 @@ void PlayerAuto::setTrickCb(chooseCardCb &&trick_callback) {
 }
 
 void PlayerAuto::takenMsg(Side side, const Table &cards, int trickNo, bool apply) {
+    nextTrick = trickNo ++;
     if (apply) {
         rmIntersection(strategy.accHand(), cards);
     }

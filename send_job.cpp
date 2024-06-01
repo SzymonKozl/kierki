@@ -8,10 +8,11 @@
 
 #include "iostream"
 
-SendJob::SendJob(std::string &&msg_prefix, bool disconnectAfter, bool responseExpected, bool overrideLast):
+SendJob::SendJob(std::string &&msg_prefix, bool disconnectAfter, bool responseExpected, bool overrideLast, bool repeatable):
         disconnectAfter(disconnectAfter),
         responseExpected(responseExpected),
         overrideLast(overrideLast),
+        repeatable(repeatable),
         msg_prefix(msg_prefix)
 {}
 
@@ -27,8 +28,12 @@ bool SendJob::isResponseExpected() const noexcept {
     return responseExpected;
 }
 
-bool SendJob::registrable() const {
+bool SendJob::registrable() const noexcept {
     return overrideLast;
+}
+
+bool SendJob::isRepeatable() const noexcept {
+    return repeatable;
 }
 
 SendJobBusy::SendJobBusy(const std::vector<Side> &taken):
@@ -98,7 +103,7 @@ std::string SendJobTotal::genMsg() const {
 }
 
 SendJobTrick::SendJobTrick(Table table, int trickNo, bool serverSide):
-        SendJob("TRICK", false, serverSide, true),
+        SendJob("TRICK", false, serverSide, true, serverSide),
         tableState(std::move(table)),
         trickNo(trickNo)
 {}

@@ -89,7 +89,13 @@ void IOWorkerHandler::timeoutAction() {
     }
     else {
         if (waitingForResponse) {
-            repeatCb(id, lastMsgSent);
+            if (!lastMsgSent->isRepeatable()) {
+                waitingForResponse = false;
+                responseTimeout.reset();
+            }
+            else {
+                repeatCb(id, lastMsgSent);
+            }
         }
     }
 }

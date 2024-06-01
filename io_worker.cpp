@@ -80,14 +80,7 @@ void IOWorker::run() {
             }
         }
         int poll_out = poll(poll_fds, 2, static_cast<int>(timeout_poll));
-        if (responseTimeout.use_count() > 0) {
-            if (std::chrono::system_clock::now() > *responseTimeout) {
-                timeoutAction();
-                responseTimeout.reset();
-                waitingForResponse = false;
-                if (terminate) break;
-            }
-        }
+        std::cout << "quitting poll " << id << '\n';
         if (poll_out == 0) continue;
         if (poll_out < 0) {
             errs.emplace_back("poll", errno, mainSockErr);
@@ -104,13 +97,16 @@ void IOWorker::run() {
                     fcntl(pipe_fd, F_SETFL, fcntl(pipe_fd, F_GETFL) ^ O_NONBLOCK);
                     ssize_t read_len;
                     char msg;
-                    if ((read_len = read(pipe_fd, &msg, 1)) < 1) {
-                        if (read_len < 0) {
-                            errs.emplace_back("read", errno, IO_ERR_INTERNAL);
+                    do {
+                        if ((read_len = read(pipe_fd, &msg, 1)) < 1) {
+                            if (read_len < 0) {
+                                errs.emplace_back("read", errno, IO_ERR_INTERNAL);
+                            }
+                            terminate = true;
+                            break;
                         }
-                        terminate = true;
-                        break;
-                    }
+                    } while (jobQueue.isStopped());
+                    if (terminate) break;
                     // setting pipe to non-blocking back
                     fcntl(pipe_fd, F_SETFL, fcntl(pipe_fd, F_GETFL) | O_NONBLOCK);
                     handlePipe();
@@ -139,6 +135,14 @@ void IOWorker::run() {
                 errs.emplace_back("socket", errno, mainSockErr);
                 informAboutError();
                 terminate = true;
+            }
+        }
+        if (responseTimeout.use_count() > 0) {
+            if (std::chrono::system_clock::now() > *responseTimeout) {
+                timeoutAction();
+                responseTimeout.reset();
+                waitingForResponse = false;
+                if (terminate) break;
             }
         }
     }

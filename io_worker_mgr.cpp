@@ -2,6 +2,7 @@
 // Created by szymon on 12.05.24.
 //
 
+#include <iostream>
 #include "io_worker_mgr.h"
 #include "constants.h"
 #include "common_types.h"
@@ -131,6 +132,7 @@ WorkerRole IOWorkerMgr::getRole(int ix) {
 void IOWorkerMgr::halt(int ix) {
     MutexGuard lock(threadsStructuresMutex);
     workers[ix]->halt();
+    std::cout << "halting " << ix << '\n';
 }
 
 void IOWorkerMgr::unhalt(int ix) {

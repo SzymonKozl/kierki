@@ -140,7 +140,7 @@ void Server::prepareRound() {
 
 void Server::playerTricked(Side side, Card card, size_t trickNoArg) {
     MutexGuard lock(gameStateMutex);
-    if (trickNoArg != trickNo || playersConnected < 4 || nextMove != side) {
+    if (trickNoArg != trickNo || nextMove != side) {
         workerMgr.sendJob(std::static_pointer_cast<SendJob>(std::make_shared<SendJobWrong>(trickNo, true)), activeSides[side]);
         return;
     }
