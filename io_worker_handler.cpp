@@ -12,6 +12,7 @@
 
 #include "string"
 #include "cerrno"
+#include "cassert"
 
 IOWorkerHandler::IOWorkerHandler(
         int pipe_fd,
@@ -47,13 +48,27 @@ void IOWorkerHandler::socketAction() {
         }
     } while (readRes == 1);
     if (readRes < 0) {
+        if (errno == ECONNRESET) {
+            wantToToQuit = true;
+            if (close(main_fd)) {
+                errs.emplace_back("close", errno, IO_ERR_INTERNAL);
+            }
+            closedFd = true;
+            return;
+        }
         if (errno != EAGAIN && errno != EWOULDBLOCK) {
+            assert(false);
             errs.emplace_back("recv", errno, IO_ERR_EXTERNAL);
             wantToToQuit = true;
         }
     }
     else {
         wantToToQuit = true;
+        if (close(main_fd)) {
+            errs.emplace_back("close", errno, IO_ERR_INTERNAL);
+        }
+        closedFd = true;
+        return;
     }
     while (!pendingIncoming.empty()) {
         std::string msg = pendingIncoming.front();
@@ -75,6 +90,8 @@ void IOWorkerHandler::socketAction() {
                     Message(clientAddr, ownAddr, msg)
             );
             pendingIncoming.pop();
+            nextTimeout = -1;
+            responseTimeout.reset();
         }
         else if (parsed[0].second == "TRICK_C") {
             int trickNo = atoi(parsed[1].second.c_str());

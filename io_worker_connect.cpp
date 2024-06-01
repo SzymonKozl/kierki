@@ -12,6 +12,7 @@
 #include "sys/socket.h"
 #include "arpa/inet.h"
 #include "endian.h"
+#include "cassert"
 
 IOWorkerConnect::IOWorkerConnect(
         int pipe_fd,
@@ -38,6 +39,7 @@ void IOWorkerConnect::socketAction() {
         if (errno == EAGAIN || errno == EWOULDBLOCK) {
             return;
         }
+        assert(false);
         errs.emplace_back("accept", errno, IO_ERR_INTERNAL);
         throw std::runtime_error("");
     }

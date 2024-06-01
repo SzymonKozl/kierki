@@ -79,6 +79,7 @@ void IOWorker::run() {
             responseTimeout.reset();
         }
         else if (pollResp < 0) {
+            assert(false);
             errs.emplace_back("poll", errno, mainSockErr);
             wantToToQuit = true;
             if (exitCb(errs, id, pendingIncoming.size())) {
@@ -99,6 +100,7 @@ void IOWorker::run() {
                 handleQueue();
                 if (!closedFd) {
                     if (close(main_fd)) {
+                        assert(false);
                         errs.emplace_back("close", errno, mainSockErr);
                     }
                     closedFd = true;
@@ -140,6 +142,7 @@ void IOWorker::handlePipe() {
     } while (read_len > 0);
     if (read_len < 0) {
         if (errno != EAGAIN && errno != EWOULDBLOCK) {
+            assert(false);
             errs.emplace_back("read", errno, IO_ERR_INTERNAL);
             terminate = true;
         }
@@ -155,6 +158,7 @@ void IOWorker::handleQueue() {
             std::string msg = job->genMsg();
             if (write(main_fd, msg.c_str(), msg.size()) != (ssize_t)msg.size()) {
                 this->terminate = true;
+                assert(false);
                 this->errs.emplace_back("write", errno, mainSockErr);
             } else {
                 this->responseTimeout = std::make_shared<decltype(this->responseTimeout)::element_type>(

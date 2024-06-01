@@ -62,6 +62,7 @@ private:
     std::unordered_map<int, Side> workerToSide;
     std::unordered_map<int, Side> zombieWorkerToSide;
     std::unordered_set<int> zombieWorkers;
+    std::unordered_set<int> allIntroduced;
     bool expectedTrickResponse;
 };
 
