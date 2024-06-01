@@ -19,20 +19,25 @@ IOWorkerConnect::IOWorkerConnect(
         int sock_fd,
         IOWorkerExitCb exit_callback,
         IOWorkerPipeCloseCb pipe_close_callback,
+        IOWorkerTimeoutCb timeout_callback,
+        IOWorkerExecuteSafeCb exec_callback,
         IOWorkerConnectionMadeCb accept_callback,
-        Logger& logger,
-        const net_address& ownAddr
+        const net_address& ownAddr,
+        Logger& logger
         ):
-        IOWorker(pipe_fd, id, sock_fd, std::move(exit_callback), std::move(pipe_close_callback), IO_ERR_INTERNAL, SIDE_NULL_, logger, ownAddr, {0, ""}, -1),
+        IOWorker(pipe_fd, id, sock_fd, std::move(exit_callback), std::move(pipe_close_callback), std::move(timeout_callback), std::move(exec_callback), IO_ERR_INTERNAL, ownAddr, {0, ""}, -1, logger),
         accCb(std::move(accept_callback))
 {}
 
 
-void IOWorkerConnect::pollAction() {
+void IOWorkerConnect::socketAction() {
     sockaddr client_addr;
     socklen_t client_addr_s = sizeof client_addr;
     int new_fd = accept(main_fd, &client_addr, &client_addr_s);
     if (new_fd < 0) {
+        if (errno == EAGAIN || errno == EWOULDBLOCK) {
+            return;
+        }
         errs.emplace_back("accept", errno, IO_ERR_INTERNAL);
         throw std::runtime_error("");
     }
@@ -49,12 +54,4 @@ void IOWorkerConnect::pollAction() {
         std::string addr = inet_ntop(AF_INET6, (const void *) &client_v6->sin6_addr, buff, (socklen_t)128);
         accCb(new_fd, std::make_pair(port, addr));
     }
-}
-
-void IOWorkerConnect::quitAction() {
-
-}
-
-void IOWorkerConnect::timeoutAction() {
-
 }

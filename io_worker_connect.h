@@ -7,6 +7,7 @@
 
 #include "io_worker.h"
 #include "common_types.h"
+#include "logger.h"
 
 #include "functional"
 
@@ -21,14 +22,14 @@ public:
             int sock_fd,
             IOWorkerExitCb exit_callback,
             IOWorkerPipeCloseCb pipe_close_callback,
+            IOWorkerTimeoutCb timeout_callback,
+            IOWorkerExecuteSafeCb exec_callback,
             IOWorkerConnectionMadeCb accept_callback,
-            Logger& logger,
-            const net_address &ownAddr
+            const net_address &ownAddr,
+            Logger& logger
             );
 private:
-    void pollAction() override;
-    void quitAction() override;
-    void timeoutAction() override;
+    void socketAction() override;
 
     IOWorkerConnectionMadeCb accCb;
 };

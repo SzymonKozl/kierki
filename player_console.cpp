@@ -24,7 +24,6 @@ void PlayerConsole::takenMsg(Side side, const Table &cards, int trickNo, bool ap
     }
     else {
         if (!lastCards.empty()) {
-            localHand.push_back(*lastCards.front());
             lastCards.pop_front();
         } else {
             std::cerr << "warn: should remove card\n";
