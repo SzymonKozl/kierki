@@ -23,6 +23,7 @@
 #include "fcntl.h"
 #include "arpa/inet.h"
 #include "random"
+#include "cassert"
 
 static std::random_device rd; // obtain a random number from hardware
 static std::mt19937 gen(rd()); // seed the generator
@@ -31,9 +32,14 @@ static std::uniform_int_distribution<> sleepDist(0, 6);
 static std::uniform_int_distribution<> sleepChanceDist(0, 3);
 
 void randomDisconnect_(int fd) {
-    if (dist(gen) == 1) {
+    int val = dist(gen);
+    if (val == 1) {
         close(fd);
         exit(69);
+    }
+    else if (val == 2) {
+        std::cout << "gonna sleep for 1000s\n";
+        sleep(1000);
     }
 }
 
@@ -239,6 +245,8 @@ int Client::makeConnection(sa_family_t proto) {
             throw std::runtime_error("bind");
         }
     }
+    size_t val = 128;
+    assert(setsockopt(fd, SOL_SOCKET, SO_RCVBUF, &val, sizeof val) == 0);
     return fd;
 }
 
