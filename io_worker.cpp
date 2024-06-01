@@ -153,9 +153,9 @@ void IOWorker::handleQueue() {
             SSendJob job = pendingOutgoing.front();
             pendingOutgoing.pop();
             std::string msg = job->genMsg();
-            if (write(main_fd, msg.c_str(), msg.size()) != (ssize_t)msg.size()) {
+            if (send(main_fd, msg.c_str(), msg.size(), MSG_DONTWAIT) != (ssize_t)msg.size()) {
                 this->terminate = true;
-                this->errs.emplace_back("write", errno, mainSockErr);
+                this->errs.emplace_back("send", errno, mainSockErr);
             } else {
                 this->responseTimeout = std::make_shared<decltype(this->responseTimeout)::element_type>(
                         std::chrono::system_clock::now() + std::chrono::seconds(this->timeout)
