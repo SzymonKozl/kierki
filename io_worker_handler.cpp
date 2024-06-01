@@ -57,7 +57,6 @@ void IOWorkerHandler::socketAction() {
             return;
         }
         if (errno != EAGAIN && errno != EWOULDBLOCK) {
-            assert(false);
             errs.emplace_back("recv", errno, IO_ERR_EXTERNAL);
             wantToToQuit = true;
         }
