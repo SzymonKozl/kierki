@@ -44,6 +44,7 @@ Server::Server(game_scenario &&scenario, uint16_t port, int timeout):
     workerToSide(),
     zombieWorkerToSide(),
     zombieWorkers(),
+    sendingBusy(),
     expectedTrickResponse(false)
 {
     for (Side s: {W, E, S, N}) {
@@ -59,7 +60,7 @@ void Server::run() {
     workerMgr.spawnNewWorker<IOWorkerConnect>(
         INCOMING_PROXY,
         tcp_listen_sock,
-        [this](ErrArr arr, int ix, int msgsLeft) { return this->grandExitCallback(arr, ix, msgsLeft);},
+        [this](ErrArr arr, int ix, bool hasWork) { return this->grandExitCallback(arr, ix, hasWork);},
         [this](int ix) {this->workerMgr.clearPipes(ix);},
         [this](int ix) {this->handleTimeout(ix);},
         [this](std::function<void()> inv) {return this->execMutexed(std::move(inv));},
@@ -148,10 +149,10 @@ bool Server::playerTricked(int trickNoArg, Card card, int workerIx) {
     MutexGuard lock(gameStateMutex);
     Side side;
     if (workerToSide.find(workerIx) != workerToSide.end() ) {
-        side = workerToSide[workerIx];
+        side = workerToSide.at(workerIx);
     }
     else if (zombieWorkerToSide.find(workerIx) != zombieWorkerToSide.end()) {
-        side = zombieWorkerToSide[workerIx];
+        side = zombieWorkerToSide.at(workerIx);
     }
     else if (trickNoArg == -1) {
         side = SIDE_NULL_;
@@ -248,8 +249,10 @@ void Server::playerIntro(Side side, int workerIx) {
             }
             if (playersConnected == 4) {
                 for (Side s: sides_) {
-                    if (s == side) continue;
                     workerMgr.signal(activeSides[s]);
+                }
+                for (int ix: sendingBusy) {
+                    workerMgr.signal(ix);
                 }
                 SSendJob msgTrick = std::static_pointer_cast<SendJob>(std::make_shared<SendJobTrick>(table, trickNo, true));
                 workerMgr.sendJob(msgTrick, activeSides[nextMove]);
@@ -262,6 +265,7 @@ void Server::playerIntro(Side side, int workerIx) {
         for (auto entry: activeSides) if (entry.second != -1) sidesBusy.push_back(entry.first);
         SSendJob msgBusy = std::static_pointer_cast<SendJob>(std::make_shared<SendJobBusy>(sidesBusy));
         workerMgr.sendJob(msgBusy, workerIx);
+        sendingBusy.insert(workerIx);
     }
 }
 
@@ -309,10 +313,10 @@ void Server::forwardConnection(int fd, net_address conn_addr) {
     workerMgr.spawnNewWorker<IOWorkerHandler>(
             HANDLING_UNKNOWN,
             fd,
-            [this] (ErrArr errs, int ix, int msgsLeft) { return this->grandExitCallback(errs, ix, msgsLeft);},
+            [this] (ErrArr errs, int ix, bool hasWork) { return this->grandExitCallback(errs, ix, hasWork);},
             [this] (int ix) {this->workerMgr.clearPipes(ix);},
-            [this](int ix) {this->handleTimeout(ix);},
-            [this](std::function<void()> inv) {return this->execMutexed(std::move(inv));},
+            [this] (int ix) {this->handleTimeout(ix);},
+            [this] (std::function<void()> inv) {return this->execMutexed(std::move(inv));},
             [this] (Side s, int ix) { this->playerIntro(s, ix);},
             [this] (int t, const Card& c, int ix) { return this->playerTricked(t, c, ix);},
             std::move(conn_addr),
@@ -328,7 +332,7 @@ void Server::finalize() {
     workerMgr.finish();
 }
 
-bool Server::grandExitCallback(const ErrArr& errArr, int workerIx, size_t msgsLeft) {
+bool Server::grandExitCallback(const ErrArr& errArr, int workerIx, bool hasWork) {
     MutexGuard lock(gameStateMutex);
     if (exiting) {
         workerMgr.eraseWorker(workerIx);
@@ -347,18 +351,19 @@ bool Server::grandExitCallback(const ErrArr& errArr, int workerIx, size_t msgsLe
             }
         }
         if (workerToSide.find(workerIx) != workerToSide.end()) {
-            Side s = workerToSide[workerIx];
+            Side s = workerToSide.at(workerIx);
             if (s == nextMove) {
                 expectedTrickResponse = false;
             }
             activeSides[s] = -1;
+            std::cout << "we are losing them\n";
             playersConnected --;
             workerToSide.erase(workerIx);
-            if (msgsLeft == 0) {
+            if (!hasWork) {
                 workerMgr.eraseWorker(workerIx);
                 return true;
             }
-            zombieWorkerToSide[workerIx] = workerToSide[workerIx];
+            zombieWorkerToSide[workerIx] = s;
             zombieWorkers.insert(workerIx);
             return false;
         }
@@ -373,7 +378,7 @@ bool Server::grandExitCallback(const ErrArr& errArr, int workerIx, size_t msgsLe
                 workerMgr.eraseWorker(workerIx);
                 return true;
             }
-            if (msgsLeft == 0) {
+            if (!hasWork) {
                 zombieWorkers.erase(workerIx);
                 zombieWorkerToSide.erase(workerIx);
                 workerMgr.eraseWorker(workerIx);
@@ -399,7 +404,7 @@ void Server::handleTimeout(int workerIx) {
             return;
         }
     }
-    if (nextMove != workerToSide[workerIx]) return;
+    if (nextMove != workerToSide.at(workerIx)) return;
     if (playersConnected < 4) {
         expectedTrickResponse = false;
         return;

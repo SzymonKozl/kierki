@@ -46,7 +46,7 @@ enum RoundType {
 };
 
 struct ErrInfo {
-    const std::string& call;
+    std::string call;
     int errnoVal;
     int errType;
 };

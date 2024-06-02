@@ -37,6 +37,7 @@ IOWorkerHandler::IOWorkerHandler(
 void IOWorkerHandler::socketAction() {
     ssize_t readRes;
     char pLoad;
+    if (closedFd) return;
     do {
         readRes = recv(main_fd, &pLoad, 1, MSG_DONTWAIT);
         if (readRes == 1){
@@ -50,13 +51,14 @@ void IOWorkerHandler::socketAction() {
     if (readRes < 0) {
         if (errno == ECONNRESET) {
             wantToToQuit = true;
-            if (close(main_fd)) {
+            if (!closedFd && close(main_fd)) {
                 errs.emplace_back("close", errno, IO_ERR_INTERNAL);
             }
             closedFd = true;
             return;
         }
         if (errno != EAGAIN && errno != EWOULDBLOCK) {
+            closedFd = true;
             errs.emplace_back("recv", errno, IO_ERR_EXTERNAL);
             wantToToQuit = true;
         }
