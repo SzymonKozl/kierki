@@ -23,12 +23,13 @@
 #include "fcntl.h"
 #include "arpa/inet.h"
 #include "random"
+#include "sys/ioctl.h"
 #include "cassert"
 
 static std::random_device rd; // obtain a random number from hardware
 static std::mt19937 gen(rd()); // seed the generator
 static std::uniform_int_distribution<> dist(0, 50); // define the range
-static std::uniform_int_distribution<> sleepDist(0, 6);
+static std::uniform_int_distribution<> sleepDist(0, 1);
 static std::uniform_int_distribution<> sleepChanceDist(0, 3);
 
 void randomDisconnect_(int fd) {
@@ -37,9 +38,22 @@ void randomDisconnect_(int fd) {
         close(fd);
         exit(69);
     }
-    else if (val == 2) {
-        std::cout << "gonna sleep for 1000s\n";
-        sleep(1000);
+    else if (val == -1) {
+        for (int i = 0; i < 100; i ++) {
+            sleep(10);
+            int bytes_available = 0;
+            if (ioctl(fd, FIONREAD, &bytes_available) == -1) {
+                perror("ioctl FIONREAD");
+                exit(2137);
+            }
+            int buffer_size = 0;
+            socklen_t option_len = sizeof(buffer_size);
+            if (getsockopt(fd, SOL_SOCKET, SO_RCVBUF, &buffer_size, &option_len) == -1) {
+                perror("getsockopt");
+                exit(2137);
+            }
+            std::cout << "bytes in buffer " << bytes_available << "/" << buffer_size << std::endl;
+        }
     }
 }
 
@@ -247,6 +261,13 @@ int Client::makeConnection(sa_family_t proto) {
     }
     size_t val = 128;
     assert(setsockopt(fd, SOL_SOCKET, SO_RCVBUF, &val, sizeof val) == 0);
+    int buffer_size = 0;
+    socklen_t option_len = sizeof(buffer_size);
+    if (getsockopt(fd, SOL_SOCKET, SO_RCVBUF, &buffer_size, &option_len) == -1) {
+        perror("getsockopt");
+        exit(2137);
+    }
+    std::cout << "buffer size is now " << buffer_size << '\n';
     return fd;
 }
 
