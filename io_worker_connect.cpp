@@ -39,7 +39,6 @@ void IOWorkerConnect::socketAction() {
         if (errno == EAGAIN || errno == EWOULDBLOCK) {
             return;
         }
-        assert(false);
         errs.emplace_back("accept", errno, IO_ERR_INTERNAL);
         throw std::runtime_error("");
     }

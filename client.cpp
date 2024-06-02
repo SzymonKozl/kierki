@@ -232,8 +232,8 @@ Client::Client(Player &player, net_address connectTo, Side side, sa_family_t pro
 
 void Client::sendMessage(const SSendJob& job) const {
     std::string msg = job->genMsg();
-    if (writeN(tcp_sock, (void *) msg.c_str(), msg.size()) < msg.size()) {
-        throw std::runtime_error("write");
+    if (sendNoBlockN(tcp_sock, (void *) msg.c_str(), static_cast<ssize_t>(msg.size())) < static_cast<ssize_t>(msg.size())) {
+        throw std::runtime_error("send");
     }
     player.anyMsg(Message(ownAddr, serverAddr, msg.substr(0, msg.size() - 2)));
 }

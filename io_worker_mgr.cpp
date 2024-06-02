@@ -35,8 +35,8 @@ IOWorkerMgr::~IOWorkerMgr() {
 }
 
 void IOWorkerMgr::signal(int ix, bool locked) {
+    char buff = 42;
     if (locked) {
-        char buff = 42;
         ssize_t ret = write(pipes[ix].first, &buff, 1);
         if (ret < 0) {
             pipeCb({"write", errno, IO_ERR_INTERNAL});
@@ -44,7 +44,6 @@ void IOWorkerMgr::signal(int ix, bool locked) {
     }
     else {
         MutexGuard lock(threadsStructuresMutex);
-        char buff = 42;
         ssize_t ret = write(pipes[ix].first, &buff, 1);
         if (ret < 0) {
             pipeCb({"write", errno, IO_ERR_INTERNAL});

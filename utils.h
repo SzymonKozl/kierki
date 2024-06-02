@@ -17,6 +17,8 @@ ssize_t writeN(int fd, void * buff, size_t n);
 
 ssize_t readN(int fd, void * buff, size_t n);
 
+ssize_t sendNoBlockN(int fd, void * buff, ssize_t n);
+
 std::string formatAddr(const net_address& addr);
 
 std::string readUntilRN(int fd);
