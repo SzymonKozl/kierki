@@ -20,7 +20,8 @@ public:
             );
     std::string toString();
 private:
-    const std::time_t registered;
+    using time_pt_t = std::chrono::time_point<std::chrono::system_clock>;
+    const time_pt_t registered;
     const net_address sender;
     const net_address receiver;
     const std::string payload;
