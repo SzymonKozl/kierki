@@ -37,51 +37,37 @@ IOWorkerHandler::IOWorkerHandler(
 {}
 
 void IOWorkerHandler::socketAction() {
+    if (wantToToQuit) return;
     ssize_t readRes;
     char pLoad;
-    if (closedFd) return;
-    do {
-        readRes = recv(main_fd, &pLoad, 1, MSG_DONTWAIT);
-        if (readRes == 1){
-            nextIncoming += pLoad;
-            if (nextIncoming.size() > MAX_PARSE_LEN) {
-                peerCorrupted = true;
-                if (!closedFd && close(main_fd)) {
-                    errs.emplace_back("close", errno, IO_ERR_INTERNAL);
+    if (!closedFd) {
+        do {
+            readRes = recv(main_fd, &pLoad, 1, MSG_DONTWAIT);
+            if (readRes == 1) {
+                nextIncoming += pLoad;
+                if (nextIncoming.size() > MAX_PARSE_LEN) {
+                    peerCorrupted = true;
+                    closeConn();
+                    break;
                 }
-                closedFd = true;
-                wantToToQuit = true;
-                exitCb(errs, id, hasWork());
-                break;
+                if (pLoad == '\n' && nextIncoming.size() > 1 && nextIncoming[nextIncoming.size() - 2] == '\r') {
+                    pendingIncoming.push(nextIncoming.substr(0, nextIncoming.size() - 2));
+                    nextIncoming.clear();
+                }
             }
-            if (pLoad == '\n' && nextIncoming.size() > 1 && nextIncoming[nextIncoming.size() - 2] == '\r') {
-                pendingIncoming.push(nextIncoming.substr(0, nextIncoming.size() - 2));
-                nextIncoming.clear();
+        } while (readRes == 1);
+        if (readRes < 0) {
+            if (errno == ECONNRESET) {
+                closeConn();
+                peerCorrupted = true;
             }
-        }
-    } while (readRes == 1);
-    if (readRes < 0) {
-        if (errno == ECONNRESET) {
-            wantToToQuit = true;
-            if (!closedFd && close(main_fd)) {
-                errs.emplace_back("close", errno, IO_ERR_INTERNAL);
+            if (errno != EAGAIN && errno != EWOULDBLOCK) {
+                errs.emplace_back("recv", errno, IO_ERR_EXTERNAL);
+                closeConn();
             }
-            closedFd = true;
-            return;
+        } else {
+            closeConn();
         }
-        if (errno != EAGAIN && errno != EWOULDBLOCK) {
-            closedFd = true;
-            errs.emplace_back("recv", errno, IO_ERR_EXTERNAL);
-            wantToToQuit = true;
-        }
-    }
-    else {
-        wantToToQuit = true;
-        if (close(main_fd)) {
-            errs.emplace_back("close", errno, IO_ERR_INTERNAL);
-        }
-        closedFd = true;
-        return;
     }
     while (!pendingIncoming.empty()) {
         std::string msg = pendingIncoming.front();
@@ -92,8 +78,8 @@ void IOWorkerHandler::socketAction() {
                 wantToToQuit = true;
                 nextTimeout = -1;
                 responseTimeout.reset();
-                break;
             }
+            break;
         }
         if (parsed[0].second == "IAM") {
             Side s = (Side) parsed[1].second[0];
@@ -111,7 +97,7 @@ void IOWorkerHandler::socketAction() {
             if (trickCb(trickNo, c, id)) {
                 pendingIncoming.pop();
                 logger.log(
-                        Message(clientAddr, ownAddr, msg.substr(0, msg.size() - 2))
+                        Message(clientAddr, ownAddr, msg)
                         );
                 nextTimeout = -1; // todo: przeplot safe
                 responseTimeout.reset();
@@ -128,6 +114,11 @@ void IOWorkerHandler::socketAction() {
                 responseTimeout.reset();
                 break;
             }
+        }
+    }
+    if (peerCorrupted) {
+        if (exitCb(errs, id, hasWork())) {
+            terminate = true;
         }
     }
 }

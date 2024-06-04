@@ -15,6 +15,7 @@
 #include "chrono"
 #include "memory"
 #include "queue"
+#include "sys/poll.h"
 
 using IOWorkerExitCb = std::function<int(ErrArr, int, bool)>;
 using IOWorkerPipeCloseCb = std::function<void(int)>;
@@ -52,6 +53,7 @@ protected:
     void handlePipe();
     void handleQueue();
     bool hasWork();
+    void closeConn();
 
     int id;
     bool wantToToQuit;
@@ -74,7 +76,8 @@ protected:
     std::queue<std::string> pendingIncoming;
     std::queue<SSendJob> pendingOutgoing;
     Logger& logger;
-    bool peerCorrupted{};
+    bool peerCorrupted;
+    pollfd* poll_fds;
 };
 
 using SIOWorker = std::shared_ptr<IOWorker>;
