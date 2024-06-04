@@ -11,9 +11,8 @@
 #include "message.h"
 #include "network_msg_parser.h"
 #include "send_job.h"
+#include "constants.h"
 
-#include "memory"
-#include "utility"
 #include "stdexcept"
 #include "iostream"
 #include "algorithm"
@@ -31,6 +30,9 @@ static std::mt19937 gen(rd()); // seed the generator
 static std::uniform_int_distribution<> dist(0, 50); // define the range
 static std::uniform_int_distribution<> sleepDist(0, 1);
 static std::uniform_int_distribution<> sleepChanceDist(0, 3);
+static std::uniform_int_distribution<> sendBullshitDist(0, 50);
+static std::uniform_int_distribution<char> charDist('a', 'b');
+static std::uniform_int_distribution<ssize_t> msgLenOffDist(1, 100);
 
 void randomDisconnect_(int fd) {
     int val = dist(gen);
@@ -59,6 +61,43 @@ void randomDisconnect_(int fd) {
 
 void randomSleep() {
     if (sleepChanceDist(gen) == 2) sleep(sleepDist(gen));
+}
+
+std::string randomLongMsg(ssize_t len) {
+    char *arr = new char[len + 3];
+    for (ssize_t i = 0; i < len; i ++) {
+        arr[i] = charDist(gen);
+    }
+    arr[len] = '\r';
+    arr[len + 1] = '\n';
+    arr[len + 2] = '\0';
+    return {arr, (size_t)len + 3};
+}
+
+void sendBullshit(int fd) {
+    static std::string trickMsg = "TRICK610H\r\n";
+    int pred = sendBullshitDist(gen);
+    switch (pred) {
+        case 1: {
+            std::cout << "sending long bullshit\n";
+            ssize_t s = static_cast<ssize_t>(MAX_PARSE_LEN) + msgLenOffDist(gen);
+            sendNoBlockN(fd, (void *) randomLongMsg(s).c_str(), s);
+            break;
+        }
+        case 2: {
+            std::cout << "sending short bullshit\n";
+            ssize_t s = msgLenOffDist(gen);
+            sendNoBlockN(fd, (void *) randomLongMsg(s).c_str(), s);
+            break;
+        }
+        case 3: {
+            std::cout << "sending yyy bullshit\n";
+            sendNoBlockN(fd, (void *) trickMsg.c_str(), trickMsg.size());
+            break;
+        }
+        default:
+            break;
+    }
 }
 
 constexpr char MSG_SEP = '\n';
@@ -95,6 +134,7 @@ int Client::run() {
 
     if (side != E) {
         randomSleep();
+        sendBullshit(tcp_sock);
         randomDisconnect_(tcp_sock);
     }
 
@@ -118,6 +158,7 @@ int Client::run() {
         int poll_status = poll(poll_fds, 2, -1);
         if (side != E) {
             randomSleep();
+            sendBullshit(tcp_sock);
             randomDisconnect_(tcp_sock);
         }
         if (poll_status < 0) {
@@ -127,6 +168,7 @@ int Client::run() {
 
             if (side != E) {
                 randomSleep();
+                sendBullshit(tcp_sock);
                 randomDisconnect_(tcp_sock);
             }
             if (poll_fds[1].revents & (POLLERR | POLLHUP | POLLNVAL)) {
@@ -163,6 +205,7 @@ int Client::run() {
 
                         if (side != E) {
                             randomSleep();
+                            sendBullshit(tcp_sock);
                             randomDisconnect_(tcp_sock);
                         }
                         Message msgObj(serverAddr, ownAddr, msg);
