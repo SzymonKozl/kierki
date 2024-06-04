@@ -8,36 +8,12 @@
 
 #include "iostream"
 
-SendJob::SendJob(std::string &&msg_prefix, bool disconnectAfter, bool responseExpected, bool overrideLast, bool repeatable):
-        disconnectAfter(disconnectAfter),
-        responseExpected(responseExpected),
-        overrideLast(overrideLast),
-        repeatable(repeatable),
+SendJob::SendJob(std::string &&msg_prefix):
         msg_prefix(msg_prefix)
 {}
 
-void SendJob::setDisconnectAfter(bool val) noexcept {
-    disconnectAfter = val;
-}
-
-bool SendJob::shouldDisconnectAfter() const noexcept {
-    return disconnectAfter;
-}
-
-bool SendJob::isResponseExpected() const noexcept {
-    return responseExpected;
-}
-
-bool SendJob::registrable() const noexcept {
-    return overrideLast;
-}
-
-bool SendJob::isRepeatable() const noexcept {
-    return repeatable;
-}
-
 SendJobBusy::SendJobBusy(const std::vector<Side> &taken):
-        SendJob("BUSY", true, false, true),
+        SendJob("BUSY"),
         taken(taken)
 {}
 
@@ -48,7 +24,7 @@ std::string SendJobBusy::genMsg() const {
 }
 
 SendJobIntro::SendJobIntro(Side s):
-        SendJob("IAM", false, false, true),
+        SendJob("IAM"),
         s(s)
 {}
 
@@ -59,7 +35,7 @@ std::string SendJobIntro::genMsg() const {
 }
 
 SendJobScore::SendJobScore(const std::unordered_map<Side, int>& scores):
-        SendJob("SCORE", false, false, true),
+        SendJob("SCORE"),
         scores(scores)
 {}
 
@@ -73,7 +49,7 @@ std::string SendJobScore::genMsg() const {
 }
 
 SendJobTaken::SendJobTaken(Table cards, Side s, int trickNo):
-        SendJob("TAKEN", false, false, true),
+        SendJob("TAKEN"),
         s(s),
         trickNo(trickNo),
         table(std::move(cards))
@@ -89,7 +65,7 @@ std::string SendJobTaken::genMsg() const {
 }
 
 SendJobTotal::SendJobTotal(const std::unordered_map<Side, int>& scores):
-        SendJob("TOTAL", false, false, true),
+        SendJob("TOTAL"),
         scores(scores)
 {}
 
@@ -102,8 +78,8 @@ std::string SendJobTotal::genMsg() const {
     return res + "\r\n";
 }
 
-SendJobTrick::SendJobTrick(Table table, int trickNo, bool serverSide):
-        SendJob("TRICK", false, serverSide, true, serverSide),
+SendJobTrick::SendJobTrick(Table table, size_t trickNo):
+        SendJob("TRICK"),
         tableState(std::move(table)),
         trickNo(trickNo)
 {}
@@ -116,8 +92,8 @@ std::string SendJobTrick::genMsg() const {
     return res + "\r\n";
 }
 
-SendJobWrong::SendJobWrong(int trick_no, bool outOfOrder):
-        SendJob("WRONG", false, !outOfOrder, false),
+SendJobWrong::SendJobWrong(size_t trick_no):
+        SendJob("WRONG"),
         trick_no(trick_no)
 {}
 
@@ -126,7 +102,7 @@ std::string SendJobWrong::genMsg() const {
 }
 
 SendDealJob::SendDealJob(RoundType roundType, Side starting, Hand cards):
-        SendJob("DEAL", false, false, true),
+        SendJob("DEAL"),
         roundType(roundType),
         starting(starting),
         cards(std::move(cards))

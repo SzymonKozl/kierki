@@ -12,7 +12,7 @@
 
 #include "functional"
 
-using IOWorkerIntroCb = std::function<void(Side, int)>;
+using IOWorkerIntroCb = std::function<bool(Side, int)>;
 using IOWrokerTrickCb = std::function<bool(int, Card, int)>;
 using IOWorkerInvalidMsgCb = std::function<bool(std::string, int)>;
 

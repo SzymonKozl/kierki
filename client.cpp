@@ -211,7 +211,7 @@ void Client::chooseCard(const Card& c) {
     if (waitingForCard) {
         Table hand;
         hand.push_back(selectedCard);
-        SSendJob msg = std::static_pointer_cast<SendJob>(std::make_shared<SendJobTrick>(hand, trickNo, false));
+        SSendJob msg = std::static_pointer_cast<SendJob>(std::make_shared<SendJobTrick>(hand, trickNo));
         sendMessage(msg);
         waitingForCard = false;
     }

@@ -89,11 +89,9 @@ void IOWorker::run() {
             }
         }
         else {
-            if (jobQueue.hasKillOrder()) {
-                wantToToQuit = true;
-            }
-            socketAction();
             handlePipe();
+            if (terminate) break;
+            socketAction();
             if (terminate) break;
             while (jobQueue.hasNextJob()) {
                 pendingOutgoing.push(jobQueue.popNextJob());
