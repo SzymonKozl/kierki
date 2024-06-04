@@ -12,4 +12,6 @@ constexpr int IO_ERR_NOERR = - 10;
 constexpr int DEFAULT_TIMEOUT = 5;
 constexpr int TCP_QUEUE = 10;
 
+constexpr size_t MAX_PARSE_LEN = 1000;
+
 #endif //KIERKI_CONSTANTS_H

@@ -13,7 +13,6 @@
 #include "unistd.h"
 #include "cerrno"
 #include "fcntl.h"
-#include "cassert"
 
 IOWorker::IOWorker(
         int pipe_fd,
@@ -47,7 +46,8 @@ IOWorker::IOWorker(
     responseTimeout(std::make_shared<decltype(responseTimeout)::element_type>(std::chrono::system_clock::now() + std::chrono::seconds(timeout))),
     timeout(timeout),
     nextTimeout(-1),
-    logger(logger)
+    logger(logger),
+    peerCorrupted(false)
 {}
 
 void IOWorker::newJob(const SSendJob& job) {
@@ -81,7 +81,7 @@ void IOWorker::run() {
         else if (pollResp < 0) {
             errs.emplace_back("poll", errno, mainSockErr);
             wantToToQuit = true;
-            if (exitCb(errs, id, pendingIncoming.size())) {
+            if (exitCb(errs, id, hasWork())) {
                 terminate = true;
                 break;
             }
@@ -96,6 +96,9 @@ void IOWorker::run() {
             handleQueue();
             if (terminate) break;
             if (jobQueue.hasKillOrder()) {
+                while (jobQueue.hasNextJob()) {
+                    pendingOutgoing.push(jobQueue.popNextJob());
+                }
                 handleQueue();
                 if (!closedFd) {
                     if (close(main_fd)) {
@@ -106,7 +109,7 @@ void IOWorker::run() {
                 wantToToQuit = true;
             }
             if (wantToToQuit) {
-                if (exitCb(errs, id, pendingIncoming.size())) {
+                if (exitCb(errs, id, hasWork())) {
                     terminate = true;
                     break;
                 }
@@ -115,7 +118,10 @@ void IOWorker::run() {
                 if (timeout > 0 && responseTimeout.use_count() > 0) {
                     nextTimeout = std::chrono::duration_cast<std::chrono::milliseconds>(
                             *responseTimeout - std::chrono::system_clock::now()).count();
-                    assert(nextTimeout > 0);
+                    if (nextTimeout < 0) {
+                        timeoutCb(id);
+                        nextTimeout = -1;
+                    }
                 }
                 else nextTimeout = -1;
 
@@ -123,7 +129,7 @@ void IOWorker::run() {
         }
     }
 
-    exitCb(errs, id, pendingIncoming.size());
+    exitCb(errs, id, hasWork());
 }
 
 IOWorker::~IOWorker() {
@@ -153,7 +159,9 @@ void IOWorker::handleQueue() {
             SSendJob job = pendingOutgoing.front();
             pendingOutgoing.pop();
             std::string msg = job->genMsg();
-            if (send(main_fd, msg.c_str(), msg.size(), MSG_DONTWAIT) != (ssize_t)msg.size()) {
+            errno = 0;
+            ssize_t send_resp = sendNoBlockN(main_fd, (void *) msg.c_str(), static_cast<ssize_t>(msg.size()));
+            if (send_resp != (ssize_t)msg.size()) {
                 this->terminate = true;
                 this->errs.emplace_back("send", errno, mainSockErr);
             } else {
@@ -165,6 +173,14 @@ void IOWorker::handleQueue() {
                         Message(this->ownAddr, this->clientAddr, msg.substr(0, msg.size() - 2))
                 );
             }
-        })) break;
+        })) {
+            break;
+        }
     }
+}
+
+bool IOWorker::hasWork() {
+    if (!pendingIncoming.empty()) return true;
+    if (!pendingOutgoing.empty() && !closedFd) return true;
+    return false;
 }

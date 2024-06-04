@@ -35,9 +35,10 @@ private:
     void clearTmpPenalties();
     void playerDisconnected(Side s, ErrInfo info);
     void finalize();
-    bool grandExitCallback(const ErrArr& errArr, int workerIx, size_t msgsLeft);
+    bool grandExitCallback(ErrArr errArr, int workerIx, bool hasWork);
     bool execMutexed(std::function<void()> invokable);
     void handleTimeout(int workerIx);
+    bool handleWrongMessage(std::string message, int ix);
 
     game_scenario gameScenario;
     IOWorkerMgr workerMgr;
@@ -63,6 +64,7 @@ private:
     std::unordered_map<int, Side> zombieWorkerToSide;
     std::unordered_set<int> zombieWorkers;
     std::unordered_set<int> allIntroduced;
+    std::unordered_set<int> sendingBusy;
     bool expectedTrickResponse;
 };
 

@@ -16,7 +16,7 @@
 #include "memory"
 #include "queue"
 
-using IOWorkerExitCb = std::function<int(ErrArr, int, size_t)>;
+using IOWorkerExitCb = std::function<int(ErrArr, int, bool)>;
 using IOWorkerPipeCloseCb = std::function<void(int)>;
 using IOWorkerTimeoutCb = std::function<void(int)>;
 using IOWorkerExecuteSafeCb = std::function<bool(std::function<void()>)>;
@@ -51,6 +51,7 @@ protected:
 
     void handlePipe();
     void handleQueue();
+    bool hasWork();
 
     int id;
     bool wantToToQuit;
@@ -73,6 +74,7 @@ protected:
     std::queue<std::string> pendingIncoming;
     std::queue<SSendJob> pendingOutgoing;
     Logger& logger;
+    bool peerCorrupted{};
 };
 
 using SIOWorker = std::shared_ptr<IOWorker>;

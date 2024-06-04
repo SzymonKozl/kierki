@@ -24,6 +24,7 @@ IOWorkerHandler::IOWorkerHandler(
         IOWorkerExecuteSafeCb exec_callback,
         IOWorkerIntroCb intro_callback,
         IOWrokerTrickCb trick_callback,
+        IOWorkerInvalidMsgCb invalid_callback,
         const net_address& clientAddr,
         const net_address& own_addr,
         int timeout,
@@ -31,16 +32,28 @@ IOWorkerHandler::IOWorkerHandler(
 ):
         IOWorker(pipe_fd, id, sock_fd, std::move(exit_callback), std::move(pipe_close_callback), std::move(timeout_callback), std::move(exec_callback), IO_ERR_EXTERNAL, ownAddr, clientAddr, timeout, logger),
         trickCb(std::move(trick_callback)),
-        introCb(std::move(intro_callback))
+        introCb(std::move(intro_callback)),
+        invalidCb(std::move(invalid_callback))
 {}
 
 void IOWorkerHandler::socketAction() {
     ssize_t readRes;
     char pLoad;
+    if (closedFd) return;
     do {
         readRes = recv(main_fd, &pLoad, 1, MSG_DONTWAIT);
         if (readRes == 1){
             nextIncoming += pLoad;
+            if (nextIncoming.size() > MAX_PARSE_LEN) {
+                peerCorrupted = true;
+                if (!closedFd && close(main_fd)) {
+                    errs.emplace_back("close", errno, IO_ERR_INTERNAL);
+                }
+                closedFd = true;
+                wantToToQuit = true;
+                exitCb(errs, id, hasWork());
+                break;
+            }
             if (pLoad == '\n' && nextIncoming.size() > 1 && nextIncoming[nextIncoming.size() - 2] == '\r') {
                 pendingIncoming.push(nextIncoming.substr(0, nextIncoming.size() - 2));
                 nextIncoming.clear();
@@ -50,13 +63,14 @@ void IOWorkerHandler::socketAction() {
     if (readRes < 0) {
         if (errno == ECONNRESET) {
             wantToToQuit = true;
-            if (close(main_fd)) {
+            if (!closedFd && close(main_fd)) {
                 errs.emplace_back("close", errno, IO_ERR_INTERNAL);
             }
             closedFd = true;
             return;
         }
         if (errno != EAGAIN && errno != EWOULDBLOCK) {
+            closedFd = true;
             errs.emplace_back("recv", errno, IO_ERR_EXTERNAL);
             wantToToQuit = true;
         }
@@ -73,13 +87,12 @@ void IOWorkerHandler::socketAction() {
         std::string msg = pendingIncoming.front();
         resp_array parsed = parse_msg(msg, true);
         if (parsed.empty()) {
-            if (trickCb(-1, Card("K", COLOR_H), id)) { //todo normal way
-                pendingIncoming.pop();
-                logger.log(
-                        Message(clientAddr, ownAddr, msg)
-                );
-                responseTimeout.reset(); // todo: przeplot safe
+            if (invalidCb(msg, id)) {
+                logger.log(Message(clientAddr, ownAddr, msg));
+                wantToToQuit = true;
                 nextTimeout = -1;
+                responseTimeout.reset();
+                break;
             }
         }
         if (parsed[0].second == "IAM") {
@@ -108,10 +121,13 @@ void IOWorkerHandler::socketAction() {
             }
         }
         else {
-            execCb([this]{
-                terminate = true;
+            if (invalidCb(msg, id)) {
+                logger.log(Message(clientAddr, ownAddr, msg));
                 wantToToQuit = true;
-            });
+                nextTimeout = -1;
+                responseTimeout.reset();
+                break;
+            }
         }
     }
 }

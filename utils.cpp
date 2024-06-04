@@ -41,6 +41,23 @@ ssize_t readN(int fd, void * buff, size_t n) {
     return _read;
 }
 
+ssize_t sendNoBlockN(int fd, void * buff, ssize_t n) {
+    char * buff_c = (char *) buff;
+    ssize_t _written = 0;
+    while (_written < n) {
+        errno = 0;
+        ssize_t t = send(fd, buff_c + _written, n - _written, MSG_DONTWAIT);
+        if (t != n - _written) {
+            if (errno == EAGAIN || errno == EWOULDBLOCK) {
+                return _written + t;
+            }
+        }
+        if (t <= 0) return -1;
+        _written += t;
+    }
+    return _written;
+}
+
 std::string readUntilRN(int fd) {
     char buff[1024];
     size_t itr = 0;
@@ -178,13 +195,15 @@ Side nxtSide(const Side &s) {
     return N;
 }
 
-void dummy(int){}
+void dummy(int signo, siginfo_t *info, void *context){
+    std::cout << "noż kurwa\n";
+}
 
 void ignoreBrokenPipe() {
     struct sigaction new_action;
     sigemptyset(&new_action.sa_mask);
     new_action.sa_flags = 0;
-    new_action.sa_handler = dummy;
+    new_action.sa_handler = SIG_IGN;
     sigaction(SIGPIPE, &new_action, nullptr);
 }
 
