@@ -401,8 +401,8 @@ void Server::handleTimeout(int workerIx) {
     if (workerToSide.find(workerIx) == workerToSide.end()) {
         if (allIntroduced.find(workerIx) == allIntroduced.end()) {
             workerMgr.sendKill(workerIx);
-            return;
         }
+        return;
     }
     if (nextMove != workerToSide.at(workerIx)) return;
     if (playersConnected < 4) {
@@ -419,5 +419,6 @@ bool Server::handleWrongMessage(std::string message, int ix) {
     if (playersConnected < 4 && !exiting) {
         return false;
     }
+    workerMgr.sendKill(ix);
     return true;
 }
