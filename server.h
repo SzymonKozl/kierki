@@ -25,15 +25,13 @@ public:
 private:
     bool furtherMovesNeeded() noexcept;
     void handleSysErr(ErrInfo info);
-    bool playerTricked(int trickNoArg, Card card, int workerIx);
-    void playerIntro(Side side, int workerIx);
+    bool playerTricked(size_t trickNoArg, Card card, int workerIx);
+    bool playerIntro(Side side, int workerIx);
     void prepareRound();
     void forwardConnection(int fd, net_address conn_addr);
-    void workerQuits(int status);
     int makeTCPSock(uint16_t port);
     void updatePenalties();
     void clearTmpPenalties();
-    void playerDisconnected(Side s, ErrInfo info);
     void finalize();
     bool grandExitCallback(ErrArr errArr, int workerIx, bool hasWork);
     bool execMutexed(std::function<void()> invokable);
@@ -62,9 +60,6 @@ private:
     Logger msgLogger;
     std::unordered_map<int, Side> workerToSide;
     std::unordered_map<int, Side> zombieWorkerToSide;
-    std::unordered_set<int> zombieWorkers;
-    std::unordered_set<int> allIntroduced;
-    std::unordered_set<int> sendingBusy;
     bool expectedTrickResponse;
 };
 
