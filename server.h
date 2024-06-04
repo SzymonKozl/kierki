@@ -35,9 +35,10 @@ private:
     void clearTmpPenalties();
     void playerDisconnected(Side s, ErrInfo info);
     void finalize();
-    bool grandExitCallback(const ErrArr& errArr, int workerIx, bool hasWork);
+    bool grandExitCallback(ErrArr errArr, int workerIx, bool hasWork);
     bool execMutexed(std::function<void()> invokable);
     void handleTimeout(int workerIx);
+    bool handleWrongMessage(std::string message, int ix);
 
     game_scenario gameScenario;
     IOWorkerMgr workerMgr;

@@ -74,6 +74,7 @@ protected:
     std::queue<std::string> pendingIncoming;
     std::queue<SSendJob> pendingOutgoing;
     Logger& logger;
+    bool peerCorrupted{};
 };
 
 using SIOWorker = std::shared_ptr<IOWorker>;

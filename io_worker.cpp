@@ -46,7 +46,8 @@ IOWorker::IOWorker(
     responseTimeout(std::make_shared<decltype(responseTimeout)::element_type>(std::chrono::system_clock::now() + std::chrono::seconds(timeout))),
     timeout(timeout),
     nextTimeout(-1),
-    logger(logger)
+    logger(logger),
+    peerCorrupted(false)
 {}
 
 void IOWorker::newJob(const SSendJob& job) {
@@ -95,6 +96,9 @@ void IOWorker::run() {
             handleQueue();
             if (terminate) break;
             if (jobQueue.hasKillOrder()) {
+                while (jobQueue.hasNextJob()) {
+                    pendingOutgoing.push(jobQueue.popNextJob());
+                }
                 handleQueue();
                 if (!closedFd) {
                     if (close(main_fd)) {

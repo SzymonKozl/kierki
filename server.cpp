@@ -23,7 +23,7 @@
 
 Server::Server(game_scenario &&scenario, uint16_t port, int timeout):
     gameScenario(scenario),
-    workerMgr([&](ErrInfo info) { handleSysErr(info);}),
+    workerMgr([&](ErrInfo info) { handleSysErr(std::move(info));}),
     activeSides(),
     penalties(),
     hands(),
@@ -313,12 +313,13 @@ void Server::forwardConnection(int fd, net_address conn_addr) {
     workerMgr.spawnNewWorker<IOWorkerHandler>(
             HANDLING_UNKNOWN,
             fd,
-            [this] (ErrArr errs, int ix, bool hasWork) { return this->grandExitCallback(errs, ix, hasWork);},
+            [this] (ErrArr errs, int ix, bool hasWork) { return this->grandExitCallback(std::move(errs), ix, hasWork);},
             [this] (int ix) {this->workerMgr.clearPipes(ix);},
             [this] (int ix) {this->handleTimeout(ix);},
             [this] (std::function<void()> inv) {return this->execMutexed(std::move(inv));},
             [this] (Side s, int ix) { this->playerIntro(s, ix);},
             [this] (int t, const Card& c, int ix) { return this->playerTricked(t, c, ix);},
+            [this] (std::string msg, int ix) {return this->handleWrongMessage(std::move(msg), ix);},
             std::move(conn_addr),
             own_addr,
             timeout,
@@ -332,7 +333,7 @@ void Server::finalize() {
     workerMgr.finish();
 }
 
-bool Server::grandExitCallback(const ErrArr& errArr, int workerIx, bool hasWork) {
+bool Server::grandExitCallback(ErrArr errArr, int workerIx, bool hasWork) {
     MutexGuard lock(gameStateMutex);
     if (exiting) {
         workerMgr.eraseWorker(workerIx);
@@ -356,7 +357,6 @@ bool Server::grandExitCallback(const ErrArr& errArr, int workerIx, bool hasWork)
                 expectedTrickResponse = false;
             }
             activeSides[s] = -1;
-            std::cout << "we are losing them\n";
             playersConnected --;
             workerToSide.erase(workerIx);
             if (!hasWork) {
@@ -412,4 +412,12 @@ void Server::handleTimeout(int workerIx) {
     SSendJob msgTrick = std::static_pointer_cast<SendJob>(std::make_shared<SendJobTrick>(table, trickNo, true));
     workerMgr.sendJob(msgTrick, workerIx);
     expectedTrickResponse = true;
+}
+
+bool Server::handleWrongMessage(std::string message, int ix) {
+    MutexGuard lock(gameStateMutex);
+    if (playersConnected < 4 && !exiting) {
+        return false;
+    }
+    return true;
 }
