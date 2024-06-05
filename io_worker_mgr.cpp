@@ -70,9 +70,7 @@ void IOWorkerMgr::finish() {
             continue;
         }
         sendKill(worker.first, true);
-        toErase.push_back(worker.first);
     }
-    clearThreadsSemaphore.release();
 }
 
 void IOWorkerMgr::sendJob(SSendJob job, int ix) {

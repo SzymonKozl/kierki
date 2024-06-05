@@ -73,7 +73,14 @@ void IOWorker::run() {
     while (!terminate) {
         poll_fds[0].revents = 0;
         poll_fds[1].revents = 0;
+
+        // preventing active waiting
+        if (!pendingIncoming.empty()) poll_fds[0].fd *= -1;
+
         int pollResp = poll(poll_fds, 2, nextTimeout);
+
+        if (!pendingIncoming.empty()) poll_fds[0].fd *= -1;
+
         nextTimeout = -1;
         if (pollResp == 0) {
             timeoutCb(id);

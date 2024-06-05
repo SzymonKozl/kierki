@@ -250,10 +250,9 @@ bool Server::playerIntro(Side side, int workerIx) {
                 workerMgr.sendJob(msg, workerIx);
             }
             if (playersConnected == 4) {
-                for (Side s: sides_) {
-                    workerMgr.signal(activeSides[s]);
-                }
+                workerMgr.signalRole(SERVING_ACTIVE);
                 workerMgr.signalRole(CLEANUP_UNKNOWN);
+                workerMgr.signalRole(SERVING_UNKNOWN);
                 SSendJob msgTrick = std::static_pointer_cast<SendJob>(std::make_shared<SendJobTrick>(table, trickNo));
                 workerMgr.sendJob(msgTrick, activeSides[nextMove]);
             }
