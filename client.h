@@ -27,7 +27,7 @@ private:
     net_address ownAddr;
     net_address serverAddr;
     bool waitingForCard;
-    Card selectedCard;\
+    Card selectedCard;
     Side side;
     int trickNo;
     sa_family_t proto;
