@@ -63,7 +63,7 @@ void PlayerConsole::wrongMsg(int trickNo) {
     }
 }
 
-void PlayerConsole::anyMsg(Message message) {
+void PlayerConsole::anyMsg(Message) {
 }
 
 void PlayerConsole::anyCmd(std::string msg) {

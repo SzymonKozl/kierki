@@ -16,8 +16,9 @@
 #include "iostream"
 #include "mutex"
 #include "stdexcept"
-#include <cstdint>
-#include <utility>
+#include "cstdint"
+#include "utility"
+#include "cassert"
 #include "sys/socket.h"
 #include "arpa/inet.h"
 
@@ -94,6 +95,15 @@ bool Server::furtherMovesNeeded() noexcept {
                 break;
             case HEART_KING_PENALTY:
                 filter = [](const Card& c) {return c.getValue() == "K" and c.getColor() == COLOR_H;};
+                break;
+            case TRICK_PENALTY: // to prevent compilator warnings
+                assert(false);
+                break;
+            case SEVENTH_LAST_TRICK_PENALTY:
+                assert(false);
+                break;
+            case EVERYTHING:
+                assert(false);
                 break;
         }
         bool found = false;
@@ -307,7 +317,7 @@ void Server::forwardConnection(int fd, net_address conn_addr) {
             [this] (std::function<void()> inv) {return this->execMutexed(std::move(inv));},
             [this] (Side s, int ix) { return this->playerIntro(s, ix);},
             [this] (int t, const Card& c, int ix) { return this->playerTricked(t, c, ix);},
-            [this] (std::string msg, int ix) {return this->handleWrongMessage(std::move(msg), ix);},
+            [this] (int ix) {return this->handleWrongMessage(ix);},
             std::move(conn_addr),
             own_addr,
             timeout,
@@ -383,6 +393,8 @@ bool Server::grandExitCallback(ErrArr errArr, int workerIx, bool hasWork) {
             return false;
         }
     }
+    assert(false);
+    return true;
 }
 
 bool Server::execMutexed(std::function<void()>&& invokable) {
@@ -411,7 +423,7 @@ void Server::handleTimeout(int workerIx) {
     }
 }
 
-bool Server::handleWrongMessage(std::string message, int ix) {
+bool Server::handleWrongMessage(int ix) {
     MutexGuard lock(gameStateMutex);
     if (playersConnected < 4 && !exiting) {
         return false;

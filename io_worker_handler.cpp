@@ -72,7 +72,7 @@ void IOWorkerHandler::socketAction() {
         std::string msg = pendingIncoming.front();
         resp_array parsed = parse_msg(msg, true);
         if (parsed.empty()) {
-            if (invalidCb(msg, id)) {
+            if (invalidCb(id)) {
                 logger.log(Message(clientAddr, ownAddr, msg));
                 wantToToQuit = true;
                 nextTimeout = -1;
@@ -115,7 +115,7 @@ void IOWorkerHandler::socketAction() {
             }
         }
         else {
-            if (invalidCb(msg, id)) {
+            if (invalidCb(id)) {
                 logger.log(Message(clientAddr, ownAddr, msg));
                 pendingIncoming.pop();
                 wantToToQuit = true;

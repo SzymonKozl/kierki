@@ -13,9 +13,9 @@
 #include "arpa/inet.h"
 #include "sys/socket.h"
 
-ssize_t writeN(int fd, void * buff, size_t n);
+ssize_t writeN(int fd, void * buff, ssize_t n);
 
-ssize_t readN(int fd, void * buff, size_t n);
+ssize_t readN(int fd, void * buff, ssize_t n);
 
 ssize_t sendNoBlockN(int fd, void * buff, ssize_t n);
 
