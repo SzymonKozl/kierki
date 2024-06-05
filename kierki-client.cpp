@@ -114,6 +114,7 @@ int main(int argc, char* argv[]) {
     } catch (std::runtime_error &e) {
         std::cerr << "client error on system call: " << e.what() << "!. errno: " << errno << std::endl;
         status = 1;
+        clientObj.cleanup();
     }
     exit(status);
 }
