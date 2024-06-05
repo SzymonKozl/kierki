@@ -78,6 +78,7 @@ void IOWorkerHandler::socketAction() {
                 wantToToQuit = true;
                 nextTimeout = -1;
                 responseTimeout.reset();
+                pendingIncoming.pop();
             }
             break;
         }
@@ -117,6 +118,7 @@ void IOWorkerHandler::socketAction() {
         else {
             if (invalidCb(msg, id)) {
                 logger.log(Message(clientAddr, ownAddr, msg));
+                pendingIncoming.pop();
                 wantToToQuit = true;
                 nextTimeout = -1;
                 responseTimeout.reset();
