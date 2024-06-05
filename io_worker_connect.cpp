@@ -19,14 +19,13 @@ IOWorkerConnect::IOWorkerConnect(
         int id,
         int sock_fd,
         IOWorkerExitCb exit_callback,
-        IOWorkerPipeCloseCb pipe_close_callback,
         IOWorkerTimeoutCb timeout_callback,
         IOWorkerExecuteSafeCb exec_callback,
         IOWorkerConnectionMadeCb accept_callback,
         const net_address& ownAddr,
         Logger& logger
         ):
-        IOWorker(pipe_fd, id, sock_fd, std::move(exit_callback), std::move(pipe_close_callback), std::move(timeout_callback), std::move(exec_callback), IO_ERR_INTERNAL, ownAddr, {0, ""}, -1, logger),
+        IOWorker(pipe_fd, id, sock_fd, std::move(exit_callback), std::move(timeout_callback), std::move(exec_callback), IO_ERR_INTERNAL, ownAddr, {0, ""}, -1, logger),
         accCb(std::move(accept_callback))
 {}
 

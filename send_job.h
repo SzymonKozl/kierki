@@ -13,7 +13,7 @@
 
 class SendJob {
 public:
-    [[nodiscard]] virtual std::string genMsg() const = 0;
+    virtual std::string genMsg() const = 0;
 protected:
     explicit SendJob(std::string &&msg_prefix);
     const std::string msg_prefix;
@@ -88,7 +88,7 @@ public:
     explicit SendJobWrong(size_t trick_no);
     std::string genMsg() const override;
 private:
-    int trick_no;
+    size_t trick_no;
 };
 
 #endif //KIERKI_SENDJOB_H

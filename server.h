@@ -21,7 +21,7 @@ using active_map = std::unordered_map<Side, int>;
 class Server {
 public:
     explicit Server(game_scenario &&scenario, uint16_t port, int timeout);
-    void run();
+    int run();
 private:
     bool furtherMovesNeeded() noexcept;
     void handleSysErr(ErrInfo info);
@@ -34,7 +34,7 @@ private:
     void clearTmpPenalties();
     void finalize();
     bool grandExitCallback(ErrArr errArr, int workerIx, bool hasWork);
-    bool execMutexed(std::function<void()> invokable);
+    bool execMutexed(std::function<void()>&& invokable);
     void handleTimeout(int workerIx);
     bool handleWrongMessage(std::string message, int ix);
 

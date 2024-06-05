@@ -18,7 +18,6 @@
 #include "sys/poll.h"
 
 using IOWorkerExitCb = std::function<int(ErrArr, int, bool)>;
-using IOWorkerPipeCloseCb = std::function<void(int)>;
 using IOWorkerTimeoutCb = std::function<void(int)>;
 using IOWorkerExecuteSafeCb = std::function<bool(std::function<void()>)>;
 
@@ -35,7 +34,6 @@ public:
             int id,
             int sock_fd,
             IOWorkerExitCb exit_callback,
-            IOWorkerPipeCloseCb pipe_close_callback,
             IOWorkerTimeoutCb timeout_callback,
             IOWorkerExecuteSafeCb exec_callback,
             int mainSockErr,
@@ -63,7 +61,6 @@ protected:
     JobQueue jobQueue;
     IOWorkerExitCb exitCb;
     IOWorkerTimeoutCb timeoutCb;
-    IOWorkerPipeCloseCb pipeCb;
     IOWorkerExecuteSafeCb execCb;
     ErrArr errs;
     int mainSockErr;
