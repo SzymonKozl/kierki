@@ -100,7 +100,6 @@ void IOWorkerMgr::waitForClearing() {
                 workers_to_erase.push_back(workers[ix]);
                 threads.erase(ix);
                 workers.erase(ix);
-                // todo pipe cleanup
                 toErase.pop_back();
             }
             if (finishFlag && workers.empty()) exitFlag = true;
