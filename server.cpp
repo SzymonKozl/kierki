@@ -52,14 +52,13 @@ Server::Server(game_scenario &&scenario, uint16_t port, int timeout):
     }
 }
 
-void Server::run() {
+int Server::run() {
     prepareRound();
     int tcp_listen_sock = makeTCPSock(own_addr.first);
     workerMgr.spawnNewWorker<IOWorkerConnect>(
         SERVING_PROXY,
         tcp_listen_sock,
         [this](ErrArr arr, int ix, bool hasWork) { return this->grandExitCallback(arr, ix, hasWork);},
-        [this](int ix) {this->workerMgr.clearPipes(ix);},
         [this](int ix) {this->handleTimeout(ix);},
         [this](std::function<void()> inv) {return this->execMutexed(std::move(inv));},
         [this](int fd, net_address conn_addr) { this->forwardConnection(fd, std::move(conn_addr));},
@@ -67,7 +66,7 @@ void Server::run() {
         std::ref(msgLogger)
     );
     workerMgr.waitForClearing();
-    exit(exitCode);
+    return exitCode;
 }
 
 bool Server::furtherMovesNeeded() noexcept {
@@ -304,7 +303,6 @@ void Server::forwardConnection(int fd, net_address conn_addr) {
             SERVING_UNKNOWN,
             fd,
             [this] (ErrArr errs, int ix, bool hasWork) { return this->grandExitCallback(std::move(errs), ix, hasWork);},
-            [this] (int ix) {this->workerMgr.clearPipes(ix);},
             [this] (int ix) {this->handleTimeout(ix);},
             [this] (std::function<void()> inv) {return this->execMutexed(std::move(inv));},
             [this] (Side s, int ix) { return this->playerIntro(s, ix);},
@@ -387,7 +385,7 @@ bool Server::grandExitCallback(ErrArr errArr, int workerIx, bool hasWork) {
     }
 }
 
-bool Server::execMutexed(std::function<void()> invokable) {
+bool Server::execMutexed(std::function<void()>&& invokable) {
     MutexGuard lock(gameStateMutex);
     if (playersConnected < 4 && !exiting) return false;
     invokable();

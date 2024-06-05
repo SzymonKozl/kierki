@@ -19,7 +19,6 @@ IOWorkerHandler::IOWorkerHandler(
         int id,
         int sock_fd,
         IOWorkerExitCb exit_callback,
-        IOWorkerPipeCloseCb pipe_close_callback,
         IOWorkerTimeoutCb timeout_callback,
         IOWorkerExecuteSafeCb exec_callback,
         IOWorkerIntroCb intro_callback,
@@ -30,7 +29,7 @@ IOWorkerHandler::IOWorkerHandler(
         int timeout,
         Logger& logger
 ):
-        IOWorker(pipe_fd, id, sock_fd, std::move(exit_callback), std::move(pipe_close_callback), std::move(timeout_callback), std::move(exec_callback), IO_ERR_EXTERNAL, ownAddr, clientAddr, timeout, logger),
+        IOWorker(pipe_fd, id, sock_fd, std::move(exit_callback), std::move(timeout_callback), std::move(exec_callback), IO_ERR_EXTERNAL, own_addr, clientAddr, timeout, logger),
         trickCb(std::move(trick_callback)),
         introCb(std::move(intro_callback)),
         invalidCb(std::move(invalid_callback))
@@ -106,7 +105,7 @@ void IOWorkerHandler::socketAction() {
                 logger.log(
                         Message(clientAddr, ownAddr, msg)
                         );
-                nextTimeout = -1; // todo: przeplot safe
+                nextTimeout = -1;
                 responseTimeout.reset();
             }
             else {

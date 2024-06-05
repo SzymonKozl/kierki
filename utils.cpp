@@ -107,6 +107,7 @@ sockaddr_any getIntAddr(const std::string& host, int proto, uint16_t port) {
 
     freeaddrinfo(address_result);
 
+
     return resp;
 }
 
@@ -136,7 +137,7 @@ net_address getAddrStruct(int fd, sa_family_t proto) {
         char buff[128];
         s_addr = inet_ntop(AF_INET6, &addr_server.sin6_addr, buff, 128);
     }
-    return std::make_pair(s_port, s_addr);
+    return std::make_pair(s_port, std::string(s_addr));
 }
 
 std::string formatAddr(const net_address& addr) {

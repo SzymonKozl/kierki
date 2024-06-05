@@ -38,7 +38,6 @@ public:
     void eraseWorker(int ix);
     void waitForClearing();
     void releaseCleaner();
-    void clearPipes(int ix);
     void setRole(int ix, WorkerStatus role);
     void signal(int ix, bool locked = true);
     void signalRole(WorkerStatus role);

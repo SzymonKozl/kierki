@@ -23,7 +23,6 @@ public:
             int id,
             int sock_fd,
             IOWorkerExitCb exit_callback,
-            IOWorkerPipeCloseCb pipe_close_callback,
             IOWorkerTimeoutCb timeout_callback,
             IOWorkerExecuteSafeCb exec_callback,
             IOWorkerIntroCb intro_callback,

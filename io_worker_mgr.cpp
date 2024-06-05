@@ -26,11 +26,9 @@ IOWorkerMgr::IOWorkerMgr(IOWorkerMgrPipeCb &&pipeCb):
 {}
 
 IOWorkerMgr::~IOWorkerMgr() {
-    for (auto & thread : threads) {
-        int ix = thread.first;
-        sendKill(ix);
-        close(pipes[ix].first);
-        close(pipes[ix].second);
+    for (auto & pipe : pipes) {
+        close(pipe.second.first);
+        close(pipe.second.second);
     }
 }
 
@@ -115,12 +113,6 @@ void IOWorkerMgr::waitForClearing() {
 void IOWorkerMgr::releaseCleaner() {
     MutexGuard lock(threadsStructuresMutex);
     finishFlag = true;
-}
-
-void IOWorkerMgr::clearPipes(int ix) {
-    MutexGuard lock(threadsStructuresMutex);
-    if (close(pipes[ix].first)) pipeCb({"close", 0, IO_ERR_EXTERNAL});
-    if (close(pipes[ix].second)) pipeCb({"close", 0, IO_ERR_EXTERNAL});
 }
 
 void IOWorkerMgr::setRole(int ix, WorkerStatus role) {
