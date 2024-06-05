@@ -38,10 +38,10 @@ IOWorkerHandler::IOWorkerHandler(
 
 void IOWorkerHandler::socketAction() {
     if (wantToToQuit) return;
-    ssize_t readRes;
+    ssize_t readRes = 1;
     char pLoad;
     if (!closedFd) {
-        do {
+        while (readRes == 1 && pendingIncoming.empty()) {
             readRes = recv(main_fd, &pLoad, 1, MSG_DONTWAIT);
             if (readRes == 1) {
                 nextIncoming += pLoad;
@@ -55,7 +55,7 @@ void IOWorkerHandler::socketAction() {
                     nextIncoming.clear();
                 }
             }
-        } while (readRes == 1);
+        }
         if (readRes < 0) {
             if (errno == ECONNRESET) {
                 closeConn();
@@ -65,7 +65,7 @@ void IOWorkerHandler::socketAction() {
                 errs.emplace_back("recv", errno, IO_ERR_EXTERNAL);
                 closeConn();
             }
-        } else {
+        } else if (readRes == 0) {
             closeConn();
         }
     }
@@ -78,18 +78,25 @@ void IOWorkerHandler::socketAction() {
                 wantToToQuit = true;
                 nextTimeout = -1;
                 responseTimeout.reset();
+                pendingIncoming.pop();
             }
             break;
         }
         if (parsed[0].second == "IAM") {
             Side s = (Side) parsed[1].second[0];
-            introCb(s, id);
-            logger.log(
-                    Message(clientAddr, ownAddr, msg)
-            );
-            pendingIncoming.pop();
-            nextTimeout = -1;
-            responseTimeout.reset();
+            if (introCb(s, id)) {
+                logger.log(
+                        Message(clientAddr, ownAddr, msg)
+                );
+                pendingIncoming.pop();
+                nextTimeout = -1;
+                responseTimeout.reset();
+            }
+            else {
+                nextTimeout = -1;
+                responseTimeout.reset();
+                break;
+            }
         }
         else if (parsed[0].second == "TRICK_C") {
             int trickNo = atoi(parsed[1].second.c_str());
@@ -103,12 +110,15 @@ void IOWorkerHandler::socketAction() {
                 responseTimeout.reset();
             }
             else {
+                nextTimeout = -1;
+                responseTimeout.reset();
                 break;
             }
         }
         else {
             if (invalidCb(msg, id)) {
                 logger.log(Message(clientAddr, ownAddr, msg));
+                pendingIncoming.pop();
                 wantToToQuit = true;
                 nextTimeout = -1;
                 responseTimeout.reset();
