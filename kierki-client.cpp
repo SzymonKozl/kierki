@@ -96,32 +96,25 @@ int main(int argc, char* argv[]) {
         exit(1);
     }
     ignoreBrokenPipe();
+    int status = 0;
+    std::shared_ptr<Player> player;
     if (autoPlayer) {
-        PlayerAuto player;
-        Client clientObj(player, (net_address) std::make_pair(port, host), side, proto);
-        player.setup(
-                [&clientObj](const Card &c) { clientObj.chooseCard(c); },
-                [&clientObj]() { return clientObj.isWaitingForCard(); }
-        );
-        try {
-            exit(clientObj.run());
-        } catch (std::runtime_error &e) {
-            std::cerr << "client error on system call: " << e.what() << "!. errno: " << errno << std::endl;
-            exit(1);
-        }
+        player = std::static_pointer_cast<Player>(std::make_shared<PlayerAuto>());
     }
     else {
-        PlayerConsole player;
-        Client clientObj(player, (net_address) std::make_pair(port, host), side, proto);
-        player.setup(
-                [&clientObj](const Card &c) { clientObj.chooseCard(c); },
-                [&clientObj]() { return clientObj.isWaitingForCard(); }
-        );
-        try {
-            exit(clientObj.run());
-        } catch (std::runtime_error &e) {
-            std::cerr << "client error on system call: " << e.what() << "!. errno: " << errno << std::endl;
-            exit(1);
-        }
+        player = std::static_pointer_cast<Player>(std::make_shared<PlayerConsole>());
     }
+    Client clientObj(*player, (net_address) std::make_pair(port, host), side, proto);
+    player->setup(
+            [&clientObj](const Card &c) { clientObj.chooseCard(c); },
+            [&clientObj]() { return clientObj.isWaitingForCard(); }
+    );
+    try {
+        status = clientObj.run();
+    } catch (std::runtime_error &e) {
+        std::cerr << "client error on system call: " << e.what() << "!. errno: " << errno << std::endl;
+        status = 1;
+        clientObj.cleanup();
+    }
+    exit(status);
 }

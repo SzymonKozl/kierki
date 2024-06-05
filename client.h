@@ -18,6 +18,7 @@ public:
     void chooseCard(const Card& c);
     void sendMessage(const SSendJob& job) const;
     bool isWaitingForCard() const noexcept;
+    void cleanup();
 private:
     static int makeConnection(sa_family_t proto);
 
@@ -26,11 +27,12 @@ private:
     net_address ownAddr;
     net_address serverAddr;
     bool waitingForCard;
-    Card selectedCard;\
+    Card selectedCard;
     Side side;
     int trickNo;
     sa_family_t proto;
     int exitFlag;
+    bool openSock;
 };
 
 #endif //KIERKI_CLIENT_H

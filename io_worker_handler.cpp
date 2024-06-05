@@ -19,80 +19,83 @@ IOWorkerHandler::IOWorkerHandler(
         int id,
         int sock_fd,
         IOWorkerExitCb exit_callback,
-        IOWorkerPipeCloseCb pipe_close_callback,
         IOWorkerTimeoutCb timeout_callback,
         IOWorkerExecuteSafeCb exec_callback,
         IOWorkerIntroCb intro_callback,
         IOWrokerTrickCb trick_callback,
+        IOWorkerInvalidMsgCb invalid_callback,
         const net_address& clientAddr,
         const net_address& own_addr,
         int timeout,
         Logger& logger
 ):
-        IOWorker(pipe_fd, id, sock_fd, std::move(exit_callback), std::move(pipe_close_callback), std::move(timeout_callback), std::move(exec_callback), IO_ERR_EXTERNAL, ownAddr, clientAddr, timeout, logger),
+        IOWorker(pipe_fd, id, sock_fd, std::move(exit_callback), std::move(timeout_callback), std::move(exec_callback), IO_ERR_EXTERNAL, own_addr, clientAddr, timeout, logger),
         trickCb(std::move(trick_callback)),
-        introCb(std::move(intro_callback))
+        introCb(std::move(intro_callback)),
+        invalidCb(std::move(invalid_callback))
 {}
 
 void IOWorkerHandler::socketAction() {
-    ssize_t readRes;
+    if (wantToToQuit) return;
+    ssize_t readRes = 1;
     char pLoad;
-    if (closedFd) return;
-    do {
-        readRes = recv(main_fd, &pLoad, 1, MSG_DONTWAIT);
-        if (readRes == 1){
-            nextIncoming += pLoad;
-            if (pLoad == '\n' && nextIncoming.size() > 1 && nextIncoming[nextIncoming.size() - 2] == '\r') {
-                pendingIncoming.push(nextIncoming.substr(0, nextIncoming.size() - 2));
-                nextIncoming.clear();
+    if (!closedFd) {
+        while (readRes == 1 && pendingIncoming.empty()) {
+            readRes = recv(main_fd, &pLoad, 1, MSG_DONTWAIT);
+            if (readRes == 1) {
+                nextIncoming += pLoad;
+                if (nextIncoming.size() > MAX_PARSE_LEN) {
+                    peerCorrupted = true;
+                    closeConn();
+                    break;
+                }
+                if (pLoad == '\n' && nextIncoming.size() > 1 && nextIncoming[nextIncoming.size() - 2] == '\r') {
+                    pendingIncoming.push(nextIncoming.substr(0, nextIncoming.size() - 2));
+                    nextIncoming.clear();
+                }
             }
         }
-    } while (readRes == 1);
-    if (readRes < 0) {
-        if (errno == ECONNRESET) {
-            wantToToQuit = true;
-            if (!closedFd && close(main_fd)) {
-                errs.emplace_back("close", errno, IO_ERR_INTERNAL);
+        if (readRes < 0) {
+            if (errno == ECONNRESET) {
+                closeConn();
+                peerCorrupted = true;
             }
-            closedFd = true;
-            return;
+            if (errno != EAGAIN && errno != EWOULDBLOCK) {
+                errs.emplace_back("recv", errno, IO_ERR_EXTERNAL);
+                closeConn();
+            }
+        } else if (readRes == 0) {
+            closeConn();
         }
-        if (errno != EAGAIN && errno != EWOULDBLOCK) {
-            closedFd = true;
-            errs.emplace_back("recv", errno, IO_ERR_EXTERNAL);
-            wantToToQuit = true;
-        }
-    }
-    else {
-        wantToToQuit = true;
-        if (close(main_fd)) {
-            errs.emplace_back("close", errno, IO_ERR_INTERNAL);
-        }
-        closedFd = true;
-        return;
     }
     while (!pendingIncoming.empty()) {
         std::string msg = pendingIncoming.front();
         resp_array parsed = parse_msg(msg, true);
         if (parsed.empty()) {
-            if (trickCb(-1, Card("K", COLOR_H), id)) { //todo normal way
-                pendingIncoming.pop();
-                logger.log(
-                        Message(clientAddr, ownAddr, msg)
-                );
-                responseTimeout.reset(); // todo: przeplot safe
+            if (invalidCb(msg, id)) {
+                logger.log(Message(clientAddr, ownAddr, msg));
+                wantToToQuit = true;
                 nextTimeout = -1;
+                responseTimeout.reset();
+                pendingIncoming.pop();
             }
+            break;
         }
         if (parsed[0].second == "IAM") {
             Side s = (Side) parsed[1].second[0];
-            introCb(s, id);
-            logger.log(
-                    Message(clientAddr, ownAddr, msg)
-            );
-            pendingIncoming.pop();
-            nextTimeout = -1;
-            responseTimeout.reset();
+            if (introCb(s, id)) {
+                logger.log(
+                        Message(clientAddr, ownAddr, msg)
+                );
+                pendingIncoming.pop();
+                nextTimeout = -1;
+                responseTimeout.reset();
+            }
+            else {
+                nextTimeout = -1;
+                responseTimeout.reset();
+                break;
+            }
         }
         else if (parsed[0].second == "TRICK_C") {
             int trickNo = atoi(parsed[1].second.c_str());
@@ -100,20 +103,31 @@ void IOWorkerHandler::socketAction() {
             if (trickCb(trickNo, c, id)) {
                 pendingIncoming.pop();
                 logger.log(
-                        Message(clientAddr, ownAddr, msg.substr(0, msg.size() - 2))
+                        Message(clientAddr, ownAddr, msg)
                         );
-                nextTimeout = -1; // todo: przeplot safe
+                nextTimeout = -1;
                 responseTimeout.reset();
             }
             else {
+                nextTimeout = -1;
+                responseTimeout.reset();
                 break;
             }
         }
         else {
-            execCb([this]{
-                terminate = true;
+            if (invalidCb(msg, id)) {
+                logger.log(Message(clientAddr, ownAddr, msg));
+                pendingIncoming.pop();
                 wantToToQuit = true;
-            });
+                nextTimeout = -1;
+                responseTimeout.reset();
+                break;
+            }
+        }
+    }
+    if (peerCorrupted) {
+        if (exitCb(errs, id, hasWork())) {
+            terminate = true;
         }
     }
 }

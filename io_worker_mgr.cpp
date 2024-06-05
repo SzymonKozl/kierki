@@ -26,11 +26,9 @@ IOWorkerMgr::IOWorkerMgr(IOWorkerMgrPipeCb &&pipeCb):
 {}
 
 IOWorkerMgr::~IOWorkerMgr() {
-    for (auto & thread : threads) {
-        int ix = thread.first;
-        sendKill(ix);
-        close(pipes[ix].first);
-        close(pipes[ix].second);
+    for (auto & pipe : pipes) {
+        close(pipe.second.first);
+        close(pipe.second.second);
     }
 }
 
@@ -70,9 +68,7 @@ void IOWorkerMgr::finish() {
             continue;
         }
         sendKill(worker.first, true);
-        toErase.push_back(worker.first);
     }
-    clearThreadsSemaphore.release();
 }
 
 void IOWorkerMgr::sendJob(SSendJob job, int ix) {
@@ -119,13 +115,7 @@ void IOWorkerMgr::releaseCleaner() {
     finishFlag = true;
 }
 
-void IOWorkerMgr::clearPipes(int ix) {
-    MutexGuard lock(threadsStructuresMutex);
-    if (close(pipes[ix].first)) pipeCb({"close", 0, IO_ERR_EXTERNAL});
-    if (close(pipes[ix].second)) pipeCb({"close", 0, IO_ERR_EXTERNAL});
-}
-
-void IOWorkerMgr::setRole(int ix, WorkerRole role) {
+void IOWorkerMgr::setRole(int ix, WorkerStatus role) {
     MutexGuard lock(threadsStructuresMutex);
     if (roles.find(ix) == roles.end()) {
         throw std::runtime_error("tried to set role for non-existing worker\n");
@@ -133,7 +123,16 @@ void IOWorkerMgr::setRole(int ix, WorkerRole role) {
     roles[ix] = role;
 }
 
-WorkerRole IOWorkerMgr::getRole(int ix) {
+WorkerStatus IOWorkerMgr::getRole(int ix) {
     MutexGuard lock(threadsStructuresMutex);
     return roles.at(ix);
+}
+
+void IOWorkerMgr::signalRole(WorkerStatus role) {
+    MutexGuard lock(threadsStructuresMutex);
+    for (auto & it : roles) {
+        if (it.second == role) {
+            signal(it.first);
+        }
+    }
 }

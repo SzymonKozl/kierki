@@ -19,7 +19,6 @@ IOWorker::IOWorker(
         int id,
         int sock_fd,
         IOWorkerExitCb exit_callback,
-        IOWorkerPipeCloseCb pipe_close_callback,
         IOWorkerTimeoutCb  timeoutCb,
         IOWorkerExecuteSafeCb exec_callback,
         int mainSockErr,
@@ -36,7 +35,6 @@ IOWorker::IOWorker(
     jobQueue(),
     exitCb(std::move(exit_callback)),
     timeoutCb(std::move(timeoutCb)),
-    pipeCb(std::move(pipe_close_callback)),
     execCb(std::move(exec_callback)),
     errs(),
     mainSockErr(mainSockErr),
@@ -46,8 +44,11 @@ IOWorker::IOWorker(
     responseTimeout(std::make_shared<decltype(responseTimeout)::element_type>(std::chrono::system_clock::now() + std::chrono::seconds(timeout))),
     timeout(timeout),
     nextTimeout(-1),
-    logger(logger)
-{}
+    logger(logger),
+    peerCorrupted(false),
+    poll_fds(nullptr)
+{
+}
 
 void IOWorker::newJob(const SSendJob& job) {
     jobQueue.pushNextJob(job);
@@ -58,7 +59,7 @@ void IOWorker::scheduleDeath() {
 }
 
 void IOWorker::run() {
-    pollfd poll_fds[2];
+    poll_fds = new pollfd[2];
     poll_fds[0].fd = main_fd;
     poll_fds[0].events = POLLIN;
     poll_fds[1].fd = pipe_fd;
@@ -70,7 +71,14 @@ void IOWorker::run() {
     while (!terminate) {
         poll_fds[0].revents = 0;
         poll_fds[1].revents = 0;
+
+        // preventing active waiting
+        if (!pendingIncoming.empty()) poll_fds[0].fd *= -1;
+
         int pollResp = poll(poll_fds, 2, nextTimeout);
+
+        if (!pendingIncoming.empty()) poll_fds[0].fd *= -1;
+
         nextTimeout = -1;
         if (pollResp == 0) {
             timeoutCb(id);
@@ -79,15 +87,16 @@ void IOWorker::run() {
         }
         else if (pollResp < 0) {
             errs.emplace_back("poll", errno, mainSockErr);
-            wantToToQuit = true;
+            closeConn();
             if (exitCb(errs, id, hasWork())) {
                 terminate = true;
                 break;
             }
         }
         else {
-            socketAction();
             handlePipe();
+            if (terminate) break;
+            socketAction();
             if (terminate) break;
             while (jobQueue.hasNextJob()) {
                 pendingOutgoing.push(jobQueue.popNextJob());
@@ -95,14 +104,11 @@ void IOWorker::run() {
             handleQueue();
             if (terminate) break;
             if (jobQueue.hasKillOrder()) {
-                handleQueue();
-                if (!closedFd) {
-                    if (close(main_fd)) {
-                        errs.emplace_back("close", errno, mainSockErr);
-                    }
-                    closedFd = true;
+                while (jobQueue.hasNextJob()) {
+                    pendingOutgoing.push(jobQueue.popNextJob());
                 }
-                wantToToQuit = true;
+                handleQueue();
+                closeConn();
             }
             if (wantToToQuit) {
                 if (exitCb(errs, id, hasWork())) {
@@ -132,6 +138,8 @@ IOWorker::~IOWorker() {
     if (!closedFd) {
         if (close(main_fd)) std::cerr << "error on close: " << errno << std:: endl << std::flush;
     }
+    delete[] poll_fds;
+    poll_fds = nullptr;
 }
 
 void IOWorker::handlePipe() {
@@ -158,8 +166,9 @@ void IOWorker::handleQueue() {
             errno = 0;
             ssize_t send_resp = sendNoBlockN(main_fd, (void *) msg.c_str(), static_cast<ssize_t>(msg.size()));
             if (send_resp != (ssize_t)msg.size()) {
-                this->terminate = true;
                 this->errs.emplace_back("send", errno, mainSockErr);
+                closeConn();
+                this->terminate = true;
             } else {
                 this->responseTimeout = std::make_shared<decltype(this->responseTimeout)::element_type>(
                         std::chrono::system_clock::now() + std::chrono::seconds(this->timeout)
@@ -179,4 +188,17 @@ bool IOWorker::hasWork() {
     if (!pendingIncoming.empty()) return true;
     if (!pendingOutgoing.empty() && !closedFd) return true;
     return false;
+}
+
+void IOWorker::closeConn() {
+    if (!closedFd) {
+        if (close(main_fd)) {
+            errs.emplace_back("close", errno, mainSockErr);
+        }
+        closedFd = true;
+    }
+    wantToToQuit = true;
+    if (poll_fds) {
+        poll_fds[0].fd = -1;
+    }
 }

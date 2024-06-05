@@ -13,18 +13,9 @@
 
 class SendJob {
 public:
-    [[nodiscard]] virtual std::string genMsg() const = 0;
-    [[nodiscard]] bool shouldDisconnectAfter() const noexcept;
-    [[nodiscard]] bool isResponseExpected() const noexcept;
-    [[nodiscard]] bool registrable() const noexcept;
-    [[nodiscard]] bool isRepeatable() const noexcept;
-    void setDisconnectAfter(bool val) noexcept;
+    virtual std::string genMsg() const = 0;
 protected:
-    SendJob(std::string &&msg_prefix, bool disconnectAfter, bool responseExpected, bool overrideLast, bool repeatable = false);
-    bool disconnectAfter;
-    bool responseExpected;
-    bool overrideLast;
-    bool repeatable;
+    explicit SendJob(std::string &&msg_prefix);
     const std::string msg_prefix;
 };
 
@@ -85,7 +76,7 @@ private:
 
 class SendJobTrick: public SendJob{
 public:
-    SendJobTrick(Table  table, int trickNo, bool serverSide);
+    SendJobTrick(Table  table, size_t trickNo);
     std::string genMsg() const override;
 private:
     const Table tableState;
@@ -94,10 +85,10 @@ private:
 
 class SendJobWrong: public SendJob {
 public:
-    explicit SendJobWrong(int trick_no, bool outOfOrder);
+    explicit SendJobWrong(size_t trick_no);
     std::string genMsg() const override;
 private:
-    int trick_no;
+    size_t trick_no;
 };
 
 #endif //KIERKI_SENDJOB_H

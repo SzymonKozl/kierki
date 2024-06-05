@@ -12,8 +12,9 @@
 
 #include "functional"
 
-using IOWorkerIntroCb = std::function<void(Side, int)>;
+using IOWorkerIntroCb = std::function<bool(Side, int)>;
 using IOWrokerTrickCb = std::function<bool(int, Card, int)>;
+using IOWorkerInvalidMsgCb = std::function<bool(std::string, int)>;
 
 class IOWorkerHandler: public IOWorker {
 public:
@@ -22,11 +23,11 @@ public:
             int id,
             int sock_fd,
             IOWorkerExitCb exit_callback,
-            IOWorkerPipeCloseCb pipe_close_callback,
             IOWorkerTimeoutCb timeout_callback,
             IOWorkerExecuteSafeCb exec_callback,
             IOWorkerIntroCb intro_callback,
             IOWrokerTrickCb trick_callback,
+            IOWorkerInvalidMsgCb invalid_callback,
             const net_address& clientAddr,
             const net_address& own_addr,
             int timeout,
@@ -37,6 +38,7 @@ private:
 
     IOWrokerTrickCb trickCb;
     IOWorkerIntroCb introCb;
+    IOWorkerInvalidMsgCb invalidCb;
     std::string nextIncoming;
 };
 
