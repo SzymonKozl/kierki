@@ -27,10 +27,10 @@
 
 static std::random_device rd; // obtain a random number from hardware
 static std::mt19937 gen(rd()); // seed the generator
-static std::uniform_int_distribution<> dist(0, 50); // define the range
+static std::uniform_int_distribution<> dist(0, 200); // define the range
 static std::uniform_int_distribution<> sleepDist(0, 1);
 static std::uniform_int_distribution<> sleepChanceDist(0, 3);
-static std::uniform_int_distribution<> sendBullshitDist(0, 50);
+static std::uniform_int_distribution<> sendBullshitDist(0, 200);
 static std::uniform_int_distribution<char> charDist('a', 'b');
 static std::uniform_int_distribution<ssize_t> msgLenOffDist(1, 100);
 
