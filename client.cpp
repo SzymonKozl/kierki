@@ -47,7 +47,7 @@ int Client::run() {
     proto = sockAddr->sa_family;
 
     tcp_sock = makeConnection(proto);
-    //fcntl(tcp_sock, F_SETFL, fcntl(tcp_sock, F_GETFL) | O_NONBLOCK);
+    openSock = true;
 
     ownAddr = getAddrStruct(tcp_sock, proto);
 
@@ -179,6 +179,7 @@ int Client::run() {
         }
     }
     close(tcp_sock);
+    openSock = false;
     return exitFlag;
 }
 
@@ -240,4 +241,12 @@ void Client::sendMessage(const SSendJob& job) const {
 
 bool Client::isWaitingForCard() const noexcept {
     return waitingForCard;
+}
+
+void Client::cleanup() {
+    if (openSock) {
+        if (close(tcp_sock)) {
+            throw std::runtime_error("close");
+        }
+    }
 }
