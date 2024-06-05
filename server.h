@@ -36,7 +36,7 @@ private:
     bool grandExitCallback(ErrArr errArr, int workerIx, bool hasWork);
     bool execMutexed(std::function<void()>&& invokable);
     void handleTimeout(int workerIx);
-    bool handleWrongMessage(std::string message, int ix);
+    bool handleWrongMessage(int ix);
 
     game_scenario gameScenario;
     IOWorkerMgr workerMgr;

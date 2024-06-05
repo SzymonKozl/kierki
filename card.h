@@ -32,8 +32,6 @@ public:
     bool operator==(const Card& other) const;
     bool operator!=(const Card& other) const;
 
-    Card& operator=(Card const& other);
-
     friend std::ostream& operator<< (std::ostream& stream, const Card& card);
 
 private:

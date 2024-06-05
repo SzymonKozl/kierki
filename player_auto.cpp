@@ -18,7 +18,7 @@ PlayerAuto::PlayerAuto():
     logger(std::cout, false)
 {}
 
-void PlayerAuto::scoreMsg(const std::unordered_map<Side, int> scores, bool total) {}
+void PlayerAuto::scoreMsg(const std::unordered_map<Side, int>, bool) {}
 
 void PlayerAuto::trickMsg(int trickNo, const Table &table) {
     if (trickNo < nextTrick) return;
@@ -28,7 +28,7 @@ void PlayerAuto::trickMsg(int trickNo, const Table &table) {
     putCb(c);
 }
 
-void PlayerAuto::dealMsg(int trickMode, const Hand& hand, Side starting) {
+void PlayerAuto::dealMsg(int trickMode, const Hand& hand, Side) {
     nextTrick = 1;
     strategy.reset(hand, trickMode);
 }
@@ -44,7 +44,7 @@ void PlayerAuto::wrongMsg(int trickNo) {
     }
 }
 
-void PlayerAuto::anyCmd(std::string msg) {
+void PlayerAuto::anyCmd(std::string) {
 
 }
 
@@ -56,7 +56,7 @@ void PlayerAuto::setTrickCb(chooseCardCb &&trick_callback) {
     trickCb = std::move(trick_callback);
 }
 
-void PlayerAuto::takenMsg(Side side, const Table &cards, int trickNo, bool apply) {
+void PlayerAuto::takenMsg(Side, const Table &cards, int trickNo, bool apply) {
     nextTrick = trickNo ++;
     if (apply) {
         rmIntersection(strategy.accHand(), cards);
@@ -71,6 +71,5 @@ void PlayerAuto::takenMsg(Side side, const Table &cards, int trickNo, bool apply
     }
 }
 
-void PlayerAuto::busyMsg(const std::vector<Side> &taken) {
-
+void PlayerAuto::busyMsg(const std::vector<Side>&) {
 }
