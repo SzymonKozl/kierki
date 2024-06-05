@@ -250,10 +250,9 @@ bool Server::playerIntro(Side side, int workerIx) {
                 workerMgr.sendJob(msg, workerIx);
             }
             if (playersConnected == 4) {
-                for (Side s: sides_) {
-                    workerMgr.signal(activeSides[s]);
-                }
+                workerMgr.signalRole(SERVING_ACTIVE);
                 workerMgr.signalRole(CLEANUP_UNKNOWN);
+                workerMgr.signalRole(SERVING_UNKNOWN);
                 SSendJob msgTrick = std::static_pointer_cast<SendJob>(std::make_shared<SendJobTrick>(table, trickNo));
                 workerMgr.sendJob(msgTrick, activeSides[nextMove]);
             }
@@ -319,6 +318,7 @@ void Server::forwardConnection(int fd, net_address conn_addr) {
 }
 
 void Server::finalize() {
+    if (exiting) return;
     exiting = true;
     workerMgr.releaseCleaner();
     workerMgr.finish();
@@ -329,7 +329,6 @@ bool Server::grandExitCallback(ErrArr errArr, int workerIx, bool hasWork) {
         auto [call, error, type] = err;
         std::cerr << "System error on " << call << " call! Error code: " << error << std::endl;
         if (type == IO_ERR_INTERNAL) {
-            exiting = true;
             exitCode = 1;
             std::cerr << "internal error! quitting server";
             finalize();
@@ -372,9 +371,8 @@ bool Server::grandExitCallback(ErrArr errArr, int workerIx, bool hasWork) {
             return true;
         }
         case SERVING_PROXY: {
-            // should never be reached unless something went terribly wrong
-            exiting = true;
             workerMgr.setRole(workerIx, SHUTDOWN);
+            workerMgr.eraseWorker(workerIx);
             finalize();
             return true;
         }
