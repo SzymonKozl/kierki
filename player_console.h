@@ -12,6 +12,8 @@
 
 class PlayerConsole: public Player {
 public:
+    explicit PlayerConsole(Side side);
+
     void trickMsg(int trickNo, const Table &table) override;
 
     void takenMsg(Side side, const Table &cards, int trickNo, bool apply) override;

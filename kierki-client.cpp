@@ -99,10 +99,10 @@ int main(int argc, char* argv[]) {
     int status = 0;
     std::shared_ptr<Player> player;
     if (autoPlayer) {
-        player = std::static_pointer_cast<Player>(std::make_shared<PlayerAuto>());
+        player = std::static_pointer_cast<Player>(std::make_shared<PlayerAuto>(side));
     }
     else {
-        player = std::static_pointer_cast<Player>(std::make_shared<PlayerConsole>());
+        player = std::static_pointer_cast<Player>(std::make_shared<PlayerConsole>(side));
     }
     Client clientObj(*player, (net_address) std::make_pair(port, host), side, proto);
     player->setup(

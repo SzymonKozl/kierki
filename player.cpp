@@ -6,8 +6,9 @@
 
 #include <utility>
 
-Player::Player()
-= default;
+Player::Player(Side side):
+        inGameSide(side)
+{}
 
 void Player::setup(putCardCb putCardCallback, cardNeededCb cardNeededCallback) {
     putCb = std::move(putCardCallback);

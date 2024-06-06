@@ -18,7 +18,7 @@ void PlayerConsole::trickMsg(int trickNo, const Table &table) {
 void PlayerConsole::takenMsg(Side side, const Table &cards, int trickNo, bool apply) {
     std::cout << "A trick " << trickNo << " is taken by " << side << ", cards ";
     printList(cards);
-    takenTricks.emplace_back(side, cards);
+    if (side == inGameSide) takenTricks.emplace_back(side, cards);
     if (apply) {
         rmIntersection(localHand, cards);
     }
@@ -111,4 +111,8 @@ void PlayerConsole::busyMsg(const std::vector<Side>& taken) {
     std::cout << "Place busy, list of busy places received: ";
     printList(taken);
     std::cout << ".\n" << std::flush;
+}
+
+PlayerConsole::PlayerConsole(Side side) : Player(side) {
+
 }
