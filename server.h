@@ -24,7 +24,7 @@ public:
     int run();
 private:
     bool furtherMovesNeeded() noexcept;
-    void handleSysErr(ErrInfo info);
+    bool handleSysErr(const ErrInfo& info, bool locked = false);
     bool playerTricked(size_t trickNoArg, Card card, int workerIx);
     bool playerIntro(Side side, int workerIx);
     void prepareRound();

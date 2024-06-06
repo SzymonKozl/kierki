@@ -4,15 +4,15 @@
 
 #include "io_worker_handler.h"
 
-#include <utility>
 #include "common_types.h"
 #include "network_msg_parser.h"
 #include "constants.h"
 #include "logger.h"
+#include "utils.h"
 
 #include "string"
+#include "algorithm"
 #include "cerrno"
-#include "cassert"
 
 IOWorkerHandler::IOWorkerHandler(
         int pipe_fd,
@@ -56,11 +56,11 @@ void IOWorkerHandler::socketAction() {
             }
         }
         if (readRes < 0) {
-            if (errno == ECONNRESET) {
+            if (std::find(SILENT_ERRS, SILENT_ERRS + SILENT_ERRS_NO, errno) != SILENT_ERRS + SILENT_ERRS_NO) {
+                errs.emplace_back("recv", errno, IO_ERR_SILENT);
                 closeConn();
-                peerCorrupted = true;
             }
-            if (errno != EAGAIN && errno != EWOULDBLOCK) {
+            else if (errno != EAGAIN && errno != EWOULDBLOCK) {
                 errs.emplace_back("recv", errno, IO_ERR_EXTERNAL);
                 closeConn();
             }

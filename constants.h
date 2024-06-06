@@ -5,13 +5,18 @@
 #ifndef KIERKI_CONSTANTS_H
 #define KIERKI_CONSTANTS_H
 
-constexpr int IO_ERR_INTERNAL = 11;
-constexpr int IO_ERR_EXTERNAL = -12;
-constexpr int IO_ERR_NOERR = - 10;
+#include "cerrno"
+
+constexpr int IO_ERR_SILENT = -11;
+constexpr int IO_ERR_INTERNAL = -12;
+constexpr int IO_ERR_EXTERNAL = -13;
 
 constexpr int DEFAULT_TIMEOUT = 5;
 constexpr int TCP_QUEUE = 10;
 
 constexpr size_t MAX_PARSE_LEN = 1000;
+
+constexpr int SILENT_ERRS[] = {EPIPE, ECONNRESET, ECONNREFUSED, ENOTCONN};
+constexpr int SILENT_ERRS_NO = sizeof (SILENT_ERRS) / sizeof (*SILENT_ERRS);
 
 #endif //KIERKI_CONSTANTS_H

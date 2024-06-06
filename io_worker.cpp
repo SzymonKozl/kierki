@@ -65,8 +65,15 @@ void IOWorker::run() {
     poll_fds[1].fd = pipe_fd;
     poll_fds[1].events = POLLIN;
 
-    fcntl(pipe_fd, F_SETFL, fcntl(pipe_fd, F_GETFL) | O_NONBLOCK);
-    fcntl(main_fd, F_SETFL, fcntl(pipe_fd, F_GETFL) | O_NONBLOCK);
+    if (fcntl(pipe_fd, F_SETFL, fcntl(pipe_fd, F_GETFL) | O_NONBLOCK)) {
+        errs.emplace_back("fcntl", errno, mainSockErr);
+        terminate = true;
+        
+    }
+    if (fcntl(main_fd, F_SETFL, fcntl(main_fd, F_GETFL) | O_NONBLOCK)) {
+        errs.emplace_back("fcntl", errno, mainSockErr);
+        terminate = true;
+    }
 
     while (!terminate) {
         poll_fds[0].revents = 0;

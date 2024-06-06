@@ -13,6 +13,10 @@
 #include "arpa/inet.h"
 #include "sys/socket.h"
 
+// unreachable macro for parts of code that should be never be reached
+// but for some reason are present (ex. to prevent compilation warnings)
+#define ASSERT_UNREACHABLE assert((false && "this code should be unreachable"))
+
 ssize_t writeN(int fd, void * buff, ssize_t n);
 
 ssize_t readN(int fd, void * buff, ssize_t n);

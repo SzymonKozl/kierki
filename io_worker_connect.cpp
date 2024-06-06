@@ -12,7 +12,6 @@
 #include "sys/socket.h"
 #include "arpa/inet.h"
 #include "endian.h"
-#include "cassert"
 
 IOWorkerConnect::IOWorkerConnect(
         int pipe_fd,
