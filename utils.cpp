@@ -19,7 +19,7 @@
 #include "cstring"
 #include "csignal"
 
-ssize_t writeN(int fd, void * buff, size_t n) {
+ssize_t writeN(int fd, void * buff, ssize_t n) {
     ssize_t written = 0;
     char * buff_c = (char *) buff;
     while (written < static_cast<ssize_t>(n)) {
@@ -30,7 +30,7 @@ ssize_t writeN(int fd, void * buff, size_t n) {
     return written;
 }
 
-ssize_t readN(int fd, void * buff, size_t n) {
+ssize_t readN(int fd, void * buff, ssize_t n) {
     char * buff_c = (char *) buff;
     ssize_t _read = 0;
     while (_read < n) {
@@ -194,10 +194,6 @@ Side nxtSide(const Side &s) {
             throw std::runtime_error("invalid side for nxtSide: SIDE_NULL_");
     }
     return N;
-}
-
-void dummy(int signo, siginfo_t *info, void *context){
-    std::cout << "noż kurwa\n";
 }
 
 void ignoreBrokenPipe() {

@@ -3,6 +3,8 @@
 //
 
 #include "server.h"
+
+#include <utility>
 #include "io_worker_connect.h"
 #include "io_worker_handler.h"
 #include "utils.h"
@@ -16,14 +18,15 @@
 #include "iostream"
 #include "mutex"
 #include "stdexcept"
-#include <cstdint>
-#include <utility>
+#include "cstdint"
+#include "utility"
+#include "cassert"
 #include "sys/socket.h"
 #include "arpa/inet.h"
 
 Server::Server(game_scenario &&scenario, uint16_t port, int timeout):
     gameScenario(scenario),
-    workerMgr([&](ErrInfo info) { handleSysErr(std::move(info));}),
+    workerMgr([this](ErrInfo info) { this->handleSysErr(info);}),
     activeSides(),
     penalties(),
     hands(),
@@ -58,7 +61,7 @@ int Server::run() {
     workerMgr.spawnNewWorker<IOWorkerConnect>(
         SERVING_PROXY,
         tcp_listen_sock,
-        [this](ErrArr arr, int ix, bool hasWork) { return this->grandExitCallback(arr, ix, hasWork);},
+        [this](ErrArr arr, int ix, bool hasWork) { return this->grandExitCallback(std::move(arr), ix, hasWork);},
         [this](int ix) {this->handleTimeout(ix);},
         [this](std::function<void()> inv) {return this->execMutexed(std::move(inv));},
         [this](int fd, net_address conn_addr) { this->forwardConnection(fd, std::move(conn_addr));},
@@ -95,6 +98,15 @@ bool Server::furtherMovesNeeded() noexcept {
             case HEART_KING_PENALTY:
                 filter = [](const Card& c) {return c.getValue() == "K" and c.getColor() == COLOR_H;};
                 break;
+            case TRICK_PENALTY: // to prevent compiler warnings
+                ASSERT_UNREACHABLE;
+                break;
+            case SEVENTH_LAST_TRICK_PENALTY:
+                ASSERT_UNREACHABLE;
+                break;
+            case EVERYTHING:
+                ASSERT_UNREACHABLE;
+                break;
         }
         bool found = false;
         for (auto & hand : hands) {
@@ -109,14 +121,24 @@ bool Server::furtherMovesNeeded() noexcept {
     }
 }
 
-void Server::handleSysErr(ErrInfo info) {
-    MutexGuard lock(gameStateMutex);
-    auto [call, error, type] = std::move(info);
-    std::cerr << "System error on " << call << " call! Error code: " << error << std::endl;
-    if (type == IO_ERR_INTERNAL) {
-        exitCode = 1;
-        std::cerr << "internal error! quitting server";
-        finalize();
+bool Server::handleSysErr(const ErrInfo& info, bool locked) {
+    msgLogger.logSysErr(info);
+    if (locked) {
+        if (info.errType == IO_ERR_INTERNAL) {
+            exitCode = 1;
+            finalize();
+            return true;
+        }
+        return false;
+    }
+    else {
+        MutexGuard lock(gameStateMutex);
+        if (info.errType == IO_ERR_INTERNAL) {
+            exitCode = 1;
+            finalize();
+            return true;
+        }
+        return false;
     }
 }
 
@@ -307,7 +329,7 @@ void Server::forwardConnection(int fd, net_address conn_addr) {
             [this] (std::function<void()> inv) {return this->execMutexed(std::move(inv));},
             [this] (Side s, int ix) { return this->playerIntro(s, ix);},
             [this] (int t, const Card& c, int ix) { return this->playerTricked(t, c, ix);},
-            [this] (std::string msg, int ix) {return this->handleWrongMessage(std::move(msg), ix);},
+            [this] (int ix) {return this->handleWrongMessage(ix);},
             std::move(conn_addr),
             own_addr,
             timeout,
@@ -323,16 +345,13 @@ void Server::finalize() {
 }
 
 bool Server::grandExitCallback(ErrArr errArr, int workerIx, bool hasWork) {
+    MutexGuard lock(gameStateMutex);
     for (ErrInfo const& err: errArr) {
-        auto [call, error, type] = err;
-        std::cerr << "System error on " << call << " call! Error code: " << error << std::endl;
-        if (type == IO_ERR_INTERNAL) {
-            exitCode = 1;
-            std::cerr << "internal error! quitting server";
-            finalize();
+        if (handleSysErr(err, true)) {
             return true;
         }
     }
+
     switch (workerMgr.getRole(workerIx)) {
 
         case SERVING_UNKNOWN: {
@@ -383,6 +402,8 @@ bool Server::grandExitCallback(ErrArr errArr, int workerIx, bool hasWork) {
             return false;
         }
     }
+    ASSERT_UNREACHABLE;
+    return true;
 }
 
 bool Server::execMutexed(std::function<void()>&& invokable) {
@@ -411,7 +432,7 @@ void Server::handleTimeout(int workerIx) {
     }
 }
 
-bool Server::handleWrongMessage(std::string message, int ix) {
+bool Server::handleWrongMessage(int ix) {
     MutexGuard lock(gameStateMutex);
     if (playersConnected < 4 && !exiting) {
         return false;
