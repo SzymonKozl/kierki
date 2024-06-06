@@ -10,8 +10,8 @@
 #include "iostream"
 #include "vector"
 
-PlayerAuto::PlayerAuto():
-    Player(),
+PlayerAuto::PlayerAuto(Side side):
+    Player(side),
     nextTrick(0),
     strategy(std::vector<Card>(), TRICK_PENALTY),
     trickCb(),

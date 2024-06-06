@@ -19,7 +19,7 @@ using chooseCardCb = std::function<void(Card)>;
 
 class PlayerAuto: public Player {
 public:
-    PlayerAuto();
+    explicit PlayerAuto(Side side);
 
     void trickMsg(int trickNo, const Table& table) override;
     void takenMsg(Side side, const Table &cards, int trickNo, bool apply) override;

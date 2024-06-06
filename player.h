@@ -18,7 +18,7 @@ using cardNeededCb = std::function<bool()>;
 
 class Player {
 public:
-    Player();
+    explicit Player(Side side);
     void setup(putCardCb putCardCallback, cardNeededCb cardNeededCallback);
     virtual void trickMsg(int trickNo, const Table& table) = 0;
     virtual void takenMsg(Side side, const Table &cards, int trickNo, bool apply) = 0;
@@ -29,6 +29,7 @@ public:
     virtual void anyMsg(Message message) = 0;
     virtual void anyCmd(std::string msg) = 0;
 protected:
+    Side inGameSide;
     std::deque<sCard> lastCards;
     putCardCb putCb;
     cardNeededCb checkCardCb;
