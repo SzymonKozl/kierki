@@ -36,26 +36,19 @@ int Client::run() {
     std::string nextMsg;
 
     sockaddrAny addr = getIntAddr(serverAddr.second, proto, htons(serverAddr.first));
-    sockaddr* sockAddr = (addr.family == AF_INET) ? (sockaddr *)addr.addr.addr_in : (sockaddr *)addr.addr.addr_in6;
     socklen_t len = (addr.family == AF_INET) ? sizeof(sockaddr_in) : sizeof(sockaddr_in6);
 
-    proto = sockAddr->sa_family;
+    proto = addr.family;
 
     tcp_sock = makeConnection(proto);
     openSock = true;
 
     ownAddr = getAddrStruct(tcp_sock, proto);
 
-    if (connect(tcp_sock, sockAddr, len)) {
+    if (connect(tcp_sock, (const sockaddr *)(&addr.addr), len)) {
         throw std::runtime_error("connect");
     }
 
-    if (addr.family == AF_INET) {
-        delete (addr.addr.addr_in);
-    }
-    else {
-        delete (addr.addr.addr_in6);
-    }
     SSendJob msgIam = std::static_pointer_cast<SendJob>(std::make_shared<SendJobIntro>(side));
     sendMessage(msgIam);
     pollfd poll_fds[] {

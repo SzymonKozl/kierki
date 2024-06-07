@@ -36,6 +36,16 @@ ssize_t sendNoBlockN(int fd, void * buff, ssize_t n) {
     return _written;
 }
 
+static sockaddr* matchingSockaddr(addrinfo* addrinfo, sa_family_t family) {
+    while (addrinfo) {
+        if (addrinfo->ai_family == family || family == 0) {
+            return addrinfo->ai_addr;
+        }
+        addrinfo = addrinfo->ai_next;
+    }
+    return nullptr;
+}
+
 sockaddrAny getIntAddr(const std::string& host, int proto, uint16_t port) {
     addrinfo hints{};
     memset(&hints, 0, sizeof(struct addrinfo));
@@ -48,28 +58,21 @@ sockaddrAny getIntAddr(const std::string& host, int proto, uint16_t port) {
     if (errcode != 0) {
         throw std::runtime_error("getaddrinfo");
     }
-    sa_family_t proto_res = address_result->ai_addr->sa_family;
     sockaddrAny resp{};
-    resp.family = proto_res;
-    if (proto_res == AF_INET) {
-        auto * tmp = new sockaddr_in{};
-        tmp->sin_addr.s_addr = ((sockaddr_in*) address_result->ai_addr)->sin_addr.s_addr;
-        tmp->sin_port = port;
-        tmp->sin_family = ((sockaddr_in*) address_result->ai_addr)->sin_family;
-        resp.addr = {.addr_in = tmp};
+    sockaddr * matching = matchingSockaddr(address_result, proto);
+    if (matching == nullptr) throw std::runtime_error("getaddrinfo - no matching family");
+    proto = matching->sa_family;
+    if (proto == AF_INET) {
+        memcpy(&resp.addr.addr_in, matching, sizeof(sockaddr_in));
+        resp.addr.addr_in.sin_port = port;
     }
     else {
-        auto * tmp = new sockaddr_in6{};
-        tmp->sin6_addr = ((sockaddr_in6*) address_result->ai_addr)->sin6_addr;
-        tmp->sin6_port = port;
-        tmp->sin6_family = ((sockaddr_in6*) address_result->ai_addr)->sin6_family;
-        tmp->sin6_scope_id = ((sockaddr_in6*) address_result->ai_addr)->sin6_scope_id;
-        tmp->sin6_flowinfo = ((sockaddr_in6*) address_result->ai_addr)->sin6_flowinfo;
-        resp.addr = {.addr_in6 = tmp};
+        memcpy(&resp.addr.addr_in6, matching, sizeof(sockaddr_in6));
+        resp.addr.addr_in6.sin6_port = port;
     }
+    resp.family = proto;
 
     freeaddrinfo(address_result);
-
 
     return resp;
 }

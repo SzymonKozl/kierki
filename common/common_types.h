@@ -17,8 +17,8 @@
 struct sockaddrAny {
 private:
     union addr_any_u {
-        sockaddr_in *addr_in;
-        sockaddr_in6 *addr_in6;
+        sockaddr_in addr_in;
+        sockaddr_in6 addr_in6;
     };
 public:
     sa_family_t family;
