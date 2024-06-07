@@ -75,7 +75,10 @@ int main(int argc, char* argv[]) {
             itr ++;
         }
         else {
-            std::cerr << "unknown option or value for option that takes no value: " << argv[itr] << "\n";
+            std::cerr <<
+                "unknown option or value for option that takes no value: " <<
+                argv[itr] <<
+                "\n";
         }
     }
     if (port == 0) {
@@ -90,19 +93,23 @@ int main(int argc, char* argv[]) {
         std::cerr << "side has to be specified via -N, -S, -E or -W\n";
     }
     if (argErr) {
-        std::cerr << "usage: kierki-client -h <host> -p <port> [-S] [-N] [-E] [-W] [-a] [-6] [-4]";
+        std::cerr << "usage: kierki-client -h <host>"
+                     " -p <port> [-S] [-N] [-E] [-W] [-a] [-6] [-4]";
         exit(1);
     }
     ignoreBrokenPipe();
     int status;
     std::shared_ptr<Player> player;
     if (autoPlayer) {
-        player = std::static_pointer_cast<Player>(std::make_shared<PlayerAuto>(side));
+        player = std::static_pointer_cast<Player>(
+                std::make_shared<PlayerAuto>(side));
     }
     else {
-        player = std::static_pointer_cast<Player>(std::make_shared<PlayerConsole>(side));
+        player = std::static_pointer_cast<Player>(
+                std::make_shared<PlayerConsole>(side));
     }
-    Client clientObj(*player, (NetAddress) std::make_pair(port, host), side, proto);
+    Client clientObj(
+            *player, (NetAddress) std::make_pair(port, host), side, proto);
     player->setup(
             [&clientObj](const Card &c) { clientObj.chooseCard(c); },
             [&clientObj]() { return clientObj.isWaitingForCard(); }
@@ -110,7 +117,8 @@ int main(int argc, char* argv[]) {
     try {
         status = clientObj.run();
     } catch (std::runtime_error &e) {
-        std::cerr << "client error on system call: " << e.what() << "!. errno: " << errno << std::endl;
+        std::cerr << "client error on system call: " <<
+            e.what() << "!. errno: " << errno << std::endl;
         status = 1;
         clientObj.cleanup();
     }

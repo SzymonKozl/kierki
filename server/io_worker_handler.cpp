@@ -26,7 +26,19 @@ IOWorkerHandler::IOWorkerHandler(
         int timeout,
         Logger& logger
 ):
-        IOWorker(pipeFd, id, sockFd, std::move(exitCallback), std::move(timeoutCallback), std::move(execCallback), IO_ERR_EXTERNAL, ownAddr, clientAddr, timeout, logger),
+        IOWorker(
+                pipeFd,
+                id,
+                sockFd,
+                std::move(exitCallback),
+                std::move(timeoutCallback),
+                std::move(execCallback),
+                IO_ERR_EXTERNAL,
+                ownAddr,
+                clientAddr,
+                timeout,
+                logger
+                ),
         trickCb(std::move(trickCallback)),
         introCb(std::move(introCallback)),
         invalidCb(std::move(invalidCallback))
@@ -46,14 +58,17 @@ void IOWorkerHandler::socketAction() {
                     closeConn();
                     break;
                 }
-                if (pLoad == '\n' && nextIncoming.size() > 1 && nextIncoming[nextIncoming.size() - 2] == '\r') {
-                    pendingIncoming.push(nextIncoming.substr(0, nextIncoming.size() - 2));
+                if (pLoad == '\n' && nextIncoming.size() > 1
+                    && nextIncoming[nextIncoming.size() - 2] == '\r') {
+                    pendingIncoming.push(
+                            nextIncoming.substr(0, nextIncoming.size() - 2));
                     nextIncoming.clear();
                 }
             }
         }
         if (readRes < 0) {
-            if (std::find(SILENT_ERRS, SILENT_ERRS + SILENT_ERRS_NO, errno) != SILENT_ERRS + SILENT_ERRS_NO) {
+            if (std::find(SILENT_ERRS, SILENT_ERRS + SILENT_ERRS_NO, errno)
+                != SILENT_ERRS + SILENT_ERRS_NO) {
                 errs.emplace_back("recv", errno, IO_ERR_SILENT);
                 closeConn();
             }

@@ -26,9 +26,9 @@ public:
     void pushNextJob(const SSendJob& job);
 
 private:
-    bool killFlag;
     std::queue<SSendJob> jobsPending;
     std::mutex mutex;
+    bool killFlag;
 };
 
 

@@ -13,8 +13,7 @@
 class GameRules {
 public:
     static bool isMoveLegal(Side &s, Card &c, table_state &state, const Table& table);
-
-    static std::pair<Side, int> whoTakes(Side const& startingSide, Table const& table, RoundType roundType, int trickNo);
+    static std::pair<Side, int> whoTakes(Side const& startingSide, Table const& table, RoundType roundType, size_t trickNo);
 };
 
 #endif //KIERKI_GAMERULES_H

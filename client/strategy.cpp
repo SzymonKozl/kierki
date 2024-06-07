@@ -4,9 +4,6 @@
 
 #include "strategy.h"
 
-#include <utility>
-#include "../common/common_types.h"
-
 Strategy::Strategy(Hand hand, int):
     hand(std::move(hand))
 {}

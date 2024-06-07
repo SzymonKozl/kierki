@@ -26,9 +26,7 @@ public:
     void wrongMsg(int trickNo) override;
     void anyMsg(Message message) override;
     void anyCmd(std::string msg) override;
-
     void busyMsg(const std::vector<Side> &taken) override;
-
 private:
     int nextTrick;
     Strategy strategy;

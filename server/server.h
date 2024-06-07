@@ -21,6 +21,7 @@ using active_map = std::unordered_map<Side, int>;
 class Server {
 public:
     explicit Server(game_scenario &&scenario, uint16_t port, int timeout);
+
     int run();
 private:
     bool furtherMovesNeeded() noexcept;

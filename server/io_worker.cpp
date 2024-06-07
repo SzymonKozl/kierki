@@ -25,28 +25,28 @@ IOWorker::IOWorker(
         int timeout,
         Logger& logger
         ) :
-        id(id),
-        wantToToQuit(false),
-        terminate(false),
-        mainFd(sockFd),
-        pipeFd(pipeFd),
-        jobQueue(),
-        exitCb(std::move(exitCallback)),
-        timeoutCb(std::move(timeoutCallback)),
-        execCb(std::move(execCallback)),
-        errs(),
-        mainSockErr(mainSockErr),
-        closedFd(false),
-        ownAddr(std::move(ownAddr)),
-        clientAddr(std::move(clientAddr)),
-        responseTimeout(std::make_shared<decltype(responseTimeout)::element_type>(std::chrono::system_clock::now() + std::chrono::seconds(timeout))),
-        timeout(timeout),
-        nextTimeout(-1),
-        logger(logger),
-        peerCorrupted(false),
-        pollFds(nullptr)
-{
-}
+    id(id),
+    wantToToQuit(false),
+    terminate(false),
+    mainFd(sockFd),
+    pipeFd(pipeFd),
+    jobQueue(),
+    exitCb(std::move(exitCallback)),
+    timeoutCb(std::move(timeoutCallback)),
+    execCb(std::move(execCallback)),
+    errs(),
+    mainSockErr(mainSockErr),
+    closedFd(false),
+    ownAddr(std::move(ownAddr)),
+    clientAddr(std::move(clientAddr)),
+    responseTimeout(std::make_shared<TimeVal>(std::chrono::system_clock::now()
+        + std::chrono::seconds(timeout))),
+    timeout(timeout),
+    nextTimeout(-1),
+    logger(logger),
+    peerCorrupted(false),
+    pollFds(nullptr)
+{}
 
 void IOWorker::newJob(const SSendJob& job) {
     jobQueue.pushNextJob(job);
@@ -123,8 +123,9 @@ void IOWorker::run() {
             }
             if (nextTimeout == -1) {
                 if (timeout > 0 && responseTimeout.use_count() > 0) {
-                    nextTimeout = std::chrono::duration_cast<std::chrono::milliseconds>(
-                            *responseTimeout - std::chrono::system_clock::now()).count();
+                    nextTimeout = static_cast<int>(std::chrono::duration_cast<
+                            std::chrono::milliseconds>(*responseTimeout -
+                            std::chrono::system_clock::now()).count());
                     if (nextTimeout < 0) {
                         timeoutCb(id);
                         nextTimeout = -1;
@@ -143,7 +144,8 @@ IOWorker::~IOWorker() {
     delete[] pollFds;
     pollFds = nullptr;
     if (!closedFd) {
-        if (close(mainFd)) std::cerr << "error on close: " << errno << std:: endl << std::flush;
+        if (close(mainFd)) std::cerr << "error on close: " << errno <<
+            std:: endl << std::flush;
     }
 }
 
@@ -169,18 +171,22 @@ void IOWorker::handleQueue() {
             pendingOutgoing.pop();
             std::string msg = job->genMsg();
             errno = 0;
-            ssize_t sendResp = sendNoBlockN(mainFd, (void *) msg.c_str(), static_cast<ssize_t>(msg.size()));
+            ssize_t sendResp = sendNoBlockN(mainFd, (void *) msg.c_str(),
+                                            static_cast<ssize_t>(msg.size()));
             if (sendResp != static_cast<ssize_t>(msg.size())) {
                 this->errs.emplace_back("send", errno, mainSockErr);
                 closeConn();
                 this->terminate = true;
             } else {
-                this->responseTimeout = std::make_shared<decltype(this->responseTimeout)::element_type>(
-                        std::chrono::system_clock::now() + std::chrono::seconds(this->timeout)
+                this->responseTimeout = std::make_shared<TimeVal>(
+                        std::chrono::system_clock::now() +
+                        std::chrono::seconds(this->timeout)
                 );
                 this->nextTimeout = this->timeout * 1000;
-                this->logger.log(
-                        Message(this->ownAddr, this->clientAddr, msg.substr(0, msg.size() - 2))
+                this->logger.log(Message(
+                        this->ownAddr,
+                        this->clientAddr,
+                        msg.substr(0, msg.size() - 2))
                 );
             }
         })) {

@@ -14,6 +14,7 @@
 class Logger {
 public:
     Logger(std::ostream& ostream, bool dummy);
+
     void log(Message m);
     void logSysErr(const ErrInfo &info);
 private:

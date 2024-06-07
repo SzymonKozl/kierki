@@ -15,12 +15,12 @@ IOWorkerMgr::IOWorkerMgr(IOWorkerMgrPipeCb &&pipeCb):
         workers(),
         pipes(),
         threads(),
-        nextIx(0),
         pipeCb(pipeCb),
         clearThreadsSemaphore{0},
         threadsStructuresMutex(),
         toErase(),
-        finishFlag(false)
+        finishFlag(false),
+        nextIx(0)
 {}
 
 IOWorkerMgr::~IOWorkerMgr() {
@@ -62,7 +62,8 @@ void IOWorkerMgr::sendKill(int ix, bool locked) {
 void IOWorkerMgr::finish() {
     MutexGuard lock(threadsStructuresMutex);
     for (auto & worker : workers) {
-        if (std::find(toErase.begin(), toErase.end(), worker.first) != toErase.end()) {
+        if (std::find(toErase.begin(), toErase.end(), worker.first)
+            != toErase.end()) {
             continue;
         }
         sendKill(worker.first, true);
@@ -102,7 +103,9 @@ void IOWorkerMgr::waitForClearing() {
             }
             if (finishFlag && workers.empty()) exitFlag = true;
         }
-        q.clear(); // destroying jthreads outside mutex scope to prevent holding mutex during join
+        // destroying jthreads outside mutex
+        // scope to prevent holding mutex during join
+        q.clear();
         workers_to_erase.clear();
     }
 }

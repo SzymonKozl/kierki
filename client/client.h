@@ -14,6 +14,7 @@
 class Client {
 public:
     Client(Player &player, NetAddress connectTo, Side side, sa_family_t proto);
+
     int run();
     void chooseCard(const Card& c);
     void sendMessage(const SSendJob& job) const;

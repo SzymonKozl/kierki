@@ -5,11 +5,13 @@
 
 #include "network_msg_parser.h"
 #include "constants.h"
+#include "utils.h"
 
 #include "string"
 #include "vector"
 #include "regex"
 #include "string_view"
+#include "cassert"
 
 #define CARD_ "(([2-9]|10|J|Q|K|A)(C|D|H|S))"
 #define SIDE_ "[NSEW]"
@@ -149,6 +151,9 @@ ParseResp parseNetMsg(std::string m, bool sererSide) {
                         res.emplace_back("score", m.substr(start, itr - start + 1));
                         itr ++;
                     }
+                    break;
+                default:
+                    ASSERT_UNREACHABLE;
                     break;
             }
             break;

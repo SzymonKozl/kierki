@@ -32,7 +32,6 @@ public:
 private:
     void busyMsg(const std::vector<Side> &taken) override;
 
-private:
     Hand localHand;
     std::vector<std::pair<Side, Table>> takenTricks;
 };

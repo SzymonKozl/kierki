@@ -17,6 +17,7 @@ public:
             NetAddress  receiver,
             std::string  payload
             );
+
     std::string toString();
 private:
     using time_pt_t = std::chrono::time_point<std::chrono::system_clock>;

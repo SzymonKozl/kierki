@@ -60,7 +60,8 @@ sockaddrAny getIntAddr(const std::string& host, int proto, uint16_t port) {
     }
     sockaddrAny resp{};
     sockaddr * matching = matchingSockaddr(addressResult, proto);
-    if (matching == nullptr) throw std::runtime_error("getaddrinfo - no matching family");
+    if (matching == nullptr)
+        throw std::runtime_error("getaddrinfo - no matching family");
     proto = matching->sa_family;
     if (proto == AF_INET) {
         memcpy(&resp.addr.addr_in, matching, sizeof(sockaddr_in));
@@ -134,10 +135,12 @@ game_scenario parseScenario(const std::string& filePath) {
             line = lines[ix ++];
             for (int i = 0; i < TRICKS_PER_ROUND; i ++) {
                 if (line[iter] == '1') {
-                    state[s_].push_back(Card::fromString(line.substr(iter, 3)));
+                    state[s_].push_back(
+                            Card::fromString(line.substr(iter, 3)));
                     iter += 1;
                 }
-                else state[s_].push_back(Card::fromString(line.substr(iter, 2)));
+                else state[s_].push_back(
+                        Card::fromString(line.substr(iter, 2)));
                 iter += 2;
             }
         }
@@ -185,7 +188,8 @@ void rmIntersection(Hand& hand, const Table& table) {
 
 void rmCardIfPresent(Hand& hand, const Card& card) {
     for (auto it = hand.begin(); it != hand.end(); it ++) {
-        if (it->getColor() == card.getColor() && it->getValue() == card.getValue()) {
+        if (it->getColor() == card.getColor()
+            && it->getValue() == card.getValue()) {
             hand.erase(it);
             return;
         }

@@ -23,12 +23,6 @@ using IOWorkerExecuteSafeCb = std::function<bool(std::function<void()>)>;
 
 class IOWorker {
 public:
-    void run();
-
-    void newJob(const SSendJob& job);
-
-    void scheduleDeath();
-
     IOWorker(
             int pipeFd,
             int id,
@@ -41,11 +35,18 @@ public:
             NetAddress clientAddr,
             int timeout,
             Logger& logger
-        );
+    );
 
     ~IOWorker();
 
+    void run();
+
+    void newJob(const SSendJob& job);
+
+    void scheduleDeath();
 protected:
+    using TimeVal = std::chrono::time_point<std::chrono::system_clock>;
+
     virtual void socketAction() = 0;
 
     void handlePipe();
@@ -67,7 +68,7 @@ protected:
     bool closedFd;
     NetAddress ownAddr;
     NetAddress clientAddr;
-    std::shared_ptr<std::chrono::time_point<std::chrono::system_clock>> responseTimeout;
+    std::shared_ptr<TimeVal> responseTimeout;
     int timeout;
     int nextTimeout;
     std::queue<std::string> pendingIncoming;

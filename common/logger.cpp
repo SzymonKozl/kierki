@@ -26,5 +26,6 @@ void Logger::logSysErr(const ErrInfo &info) {
     std::lock_guard<std::mutex> lock(mutex);
     auto [call, eno, type] = info;
     if (type == IO_ERR_SILENT) return;
-    std::cerr << "System call " << call << " resulted in error!. Errno: " << eno << '\n';
+    std::cerr << "System call " << call << " resulted in error!. Errno: " <<
+        eno << '\n';
 }

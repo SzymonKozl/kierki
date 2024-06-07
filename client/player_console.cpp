@@ -13,7 +13,12 @@ void PlayerConsole::trickMsg(int trickNo, const Table &table) {
     std::cout << std::endl << std::flush;
 }
 
-void PlayerConsole::takenMsg(Side side, const Table &cards, int trickNo, bool apply) {
+void PlayerConsole::takenMsg(
+        Side side,
+        const Table &cards,
+        int trickNo,
+        bool apply
+        ) {
     std::cout << "A trick " << trickNo << " is taken by " << side << ", cards ";
     printList(cards);
     if (side == inGameSide) takenTricks.emplace_back(side, cards);
@@ -45,14 +50,16 @@ void PlayerConsole::scoreMsg(const score_map scores, bool total) {
 }
 
 void PlayerConsole::dealMsg(int trickMode, const Hand& hand, Side starting) {
-    std::cout << "New deal " << trickMode << " staring place " << starting << ", your cards: ";
+    std::cout << "New deal " << trickMode << " staring place " <<
+        starting << ", your cards: ";
     printList(hand);
     std::cout << ".\n" << std::flush;
     localHand = hand;
 }
 
 void PlayerConsole::wrongMsg(int trickNo) {
-    std::cout << "Wrong message received in trick " << trickNo << ".\n" << std::flush;
+    std::cout << "Wrong message received in trick " << trickNo << ".\n" <<
+        std::flush;
     if (!lastCards.empty()) {
         localHand.push_back(*lastCards.front());
         lastCards.pop_front();
@@ -70,15 +77,18 @@ void PlayerConsole::anyCmd(std::string msg) {
         try {
             Card c = Card::fromString(msg.substr(1));
             if (!checkCardCb()) {
-                std::cout << "No card request from server. Card select action is discarded\n" << std::flush;
+                std::cout << "No card request from server."
+                             " Card select action is discarded\n" << std::flush;
                 return;
             }
             bool found  = false;
             for (const Card& card: localHand) {
-                if (card.getColor() == c.getColor() && card.getValue() == c.getValue()) found = true;
+                if (card.getColor() == c.getColor()
+                    && card.getValue() == c.getValue()) found = true;
             }
             if (!found) {
-                std::cout << "Card " << c.toString() << " is not in your hand.\nAvailable cards: ";
+                std::cout << "Card " << c.toString() <<
+                    " is not in your hand.\nAvailable cards: ";
                 printList(localHand);
                 std::cout << ".\n" << std::flush;
                 return;

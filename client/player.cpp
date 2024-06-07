@@ -7,7 +7,7 @@
 #include <utility>
 
 Player::Player(Side side):
-        inGameSide(side)
+    inGameSide(side)
 {}
 
 void Player::setup(putCardCb putCardCallback, cardNeededCb cardNeededCallback) {

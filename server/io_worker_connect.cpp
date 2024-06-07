@@ -21,10 +21,21 @@ IOWorkerConnect::IOWorkerConnect(
         const NetAddress& ownAddr,
         Logger& logger
         ):
-        IOWorker(pipeFd, id, sockFd, std::move(exitCallback), std::move(timeoutCallback), std::move(execCallback), IO_ERR_INTERNAL, ownAddr, {0, ""}, -1, logger),
+        IOWorker(
+                pipeFd,
+                id,
+                sockFd,
+                std::move(exitCallback),
+                std::move(timeoutCallback),
+                std::move(execCallback),
+                IO_ERR_INTERNAL,
+                ownAddr,
+                {0, ""},
+                -1,
+                logger
+                ),
         accCb(std::move(acceptCallback))
 {}
-
 
 void IOWorkerConnect::socketAction() {
     sockaddr clientAddr{};
@@ -47,7 +58,12 @@ void IOWorkerConnect::socketAction() {
         auto* clientV6 = (sockaddr_in6*) &clientAddr;
         uint16_t port = be16toh(clientV6->sin6_port);
         char buff[128];
-        std::string addr = inet_ntop(AF_INET6, reinterpret_cast<const void *>(static_cast<const in6_addr*>(&clientV6->sin6_addr)), buff, (socklen_t)128);
+        std::string addr = inet_ntop(
+                AF_INET6,
+                reinterpret_cast<const void *>(
+                        static_cast<const in6_addr*>(&clientV6->sin6_addr)),
+                buff,
+                (socklen_t)128);
         accCb(newFd, std::make_pair(port, addr));
     }
 }

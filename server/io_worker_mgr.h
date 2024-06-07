@@ -30,6 +30,9 @@ using IOWorkerMgrPipeCb = std::function<void(ErrInfo)>;
 
 class IOWorkerMgr {
 public:
+    explicit IOWorkerMgr(IOWorkerMgrPipeCb &&pipeCb);
+    ~IOWorkerMgr();
+
     template<class T, class... Args> requires std::is_base_of_v<IOWorker, T> &&  std::constructible_from<T, int, int, Args...>
     int spawnNewWorker(WorkerStatus role, Args... args);
     void sendKill(int ix, bool locked = false);
@@ -42,8 +45,6 @@ public:
     void signal(int ix, bool locked = true);
     void signalRole(WorkerStatus role);
     WorkerStatus getRole(int ix);
-    explicit IOWorkerMgr(IOWorkerMgrPipeCb &&pipeCb);
-    ~IOWorkerMgr();
 private:
     using Sjthread = std::shared_ptr<std::jthread>;
 
@@ -51,12 +52,12 @@ private:
     std::unordered_map<int, std::pair<int, int>> pipes;
     std::unordered_map<int, Sjthread> threads;
     std::unordered_map<int, WorkerStatus> roles;
-    int nextIx;
     IOWorkerMgrPipeCb pipeCb;
     std::binary_semaphore clearThreadsSemaphore;
     std::mutex threadsStructuresMutex;
     std::vector<int> toErase;
     bool finishFlag;
+    int nextIx;
 };
 
 template<class T, class ...Args>

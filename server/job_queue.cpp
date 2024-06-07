@@ -8,14 +8,15 @@
 #include "stdexcept"
 
 JobQueue::JobQueue():
-    killFlag(false),
     jobsPending(),
-    mutex()
+    mutex(),
+    killFlag(false)
 {}
 
 SSendJob JobQueue::popNextJob() {
     std::lock_guard<std::mutex> lock(mutex);
-    if (jobsPending.empty()) throw std::runtime_error("tried to pop from empty job queue");
+    if (jobsPending.empty())
+        throw std::runtime_error("tried to pop from empty job queue");
     SSendJob job = jobsPending.front();
     jobsPending.pop();
     return job;
