@@ -20,9 +20,16 @@ int main(int argc, char* argv[]) {
                 ("port,p", po::value<std::vector<uint16_t>>(), "port to listen on")
                 ("file,f", po::value<std::vector<std::string>>()->required(), "configuration file")
                 ("timeout,t", po::value<std::vector<int>>(), "listen timeout");
-
+        po::positional_options_description posDesc;
         po::variables_map vm;
-        po::store(po::parse_command_line(argc, argv, desc), vm);
+        //po::store(po::parse_command_line(argc, argv, desc), vm);
+        try {
+            po::store(po::command_line_parser(argc, argv).options(desc).positional(posDesc).run(), vm);
+        } catch (std::exception& e) {
+            std::cerr << e.what() << '\n';
+            std::cerr << "usage: " << argv[0] << " -p <port> -f <game scenario file> [-t timeout]";
+            exit(1);
+        }
         po::notify(vm);
         std::vector<uint16_t> ports;
         std::string file;
