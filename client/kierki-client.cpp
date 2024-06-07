@@ -102,7 +102,7 @@ int main(int argc, char* argv[]) {
     else {
         player = std::static_pointer_cast<Player>(std::make_shared<PlayerConsole>(side));
     }
-    Client clientObj(*player, (net_address) std::make_pair(port, host), side, proto);
+    Client clientObj(*player, (NetAddress) std::make_pair(port, host), side, proto);
     player->setup(
             [&clientObj](const Card &c) { clientObj.chooseCard(c); },
             [&clientObj]() { return clientObj.isWaitingForCard(); }

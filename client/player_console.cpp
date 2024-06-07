@@ -27,7 +27,7 @@ void PlayerConsole::takenMsg(Side side, const Table &cards, int trickNo, bool ap
             std::cerr << "warn: should remove card\n";
         }
     }
-    std::cout << ".\n";
+    std::cout << ".\n" << std::flush;
 }
 
 void PlayerConsole::scoreMsg(const score_map scores, bool total) {
@@ -40,24 +40,25 @@ void PlayerConsole::scoreMsg(const score_map scores, bool total) {
     for (Side s: sides_) {
         std::cout << s << " | " << scores.at(s) << '\n';
     }
+    std::cout << std::flush;
     takenTricks.clear();
 }
 
 void PlayerConsole::dealMsg(int trickMode, const Hand& hand, Side starting) {
     std::cout << "New deal " << trickMode << " staring place " << starting << ", your cards: ";
     printList(hand);
-    std::cout << ".\n";
+    std::cout << ".\n" << std::flush;
     localHand = hand;
 }
 
 void PlayerConsole::wrongMsg(int trickNo) {
-    std::cout << "Wrong message received in trick " << trickNo << ".\n";
+    std::cout << "Wrong message received in trick " << trickNo << ".\n" << std::flush;
     if (!lastCards.empty()) {
         localHand.push_back(*lastCards.front());
         lastCards.pop_front();
     }
     else {
-        std::cerr << "warn: should remove card\n";
+        std::cerr << "warn: should remove card\n" << std::flush;
     }
 }
 

@@ -11,43 +11,43 @@
 #include "endian.h"
 
 IOWorkerConnect::IOWorkerConnect(
-        int pipe_fd,
+        int pipeFd,
         int id,
-        int sock_fd,
-        IOWorkerExitCb exit_callback,
-        IOWorkerTimeoutCb timeout_callback,
-        IOWorkerExecuteSafeCb exec_callback,
-        IOWorkerConnectionMadeCb accept_callback,
-        const net_address& ownAddr,
+        int sockFd,
+        IOWorkerExitCb exitCallback,
+        IOWorkerTimeoutCb timeoutCallback,
+        IOWorkerExecuteSafeCb execCallback,
+        IOWorkerConnectionMadeCb acceptCallback,
+        const NetAddress& ownAddr,
         Logger& logger
         ):
-        IOWorker(pipe_fd, id, sock_fd, std::move(exit_callback), std::move(timeout_callback), std::move(exec_callback), IO_ERR_INTERNAL, ownAddr, {0, ""}, -1, logger),
-        accCb(std::move(accept_callback))
+        IOWorker(pipeFd, id, sockFd, std::move(exitCallback), std::move(timeoutCallback), std::move(execCallback), IO_ERR_INTERNAL, ownAddr, {0, ""}, -1, logger),
+        accCb(std::move(acceptCallback))
 {}
 
 
 void IOWorkerConnect::socketAction() {
-    sockaddr client_addr;
-    socklen_t client_addr_s = sizeof client_addr;
-    int new_fd = accept(main_fd, &client_addr, &client_addr_s);
-    if (new_fd < 0) {
+    sockaddr clientAddr{};
+    socklen_t clientAddrLen = sizeof clientAddr;
+    int newFd = accept(mainFd, &clientAddr, &clientAddrLen);
+    if (newFd < 0) {
         if (errno == EAGAIN || errno == EWOULDBLOCK) {
             return;
         }
         errs.emplace_back("accept", errno, IO_ERR_INTERNAL);
         throw std::runtime_error("");
     }
-    if (client_addr.sa_family == AF_INET) {
-        auto* client_v4 = (sockaddr_in*) &client_addr;
-        uint16_t port = be16toh(client_v4->sin_port);
-        std::string addr = inet_ntoa(client_v4->sin_addr);
-        accCb(new_fd, std::make_pair(port, addr));
+    if (clientAddr.sa_family == AF_INET) {
+        auto* clientV4 = reinterpret_cast<sockaddr_in*>(&clientAddr);
+        uint16_t port = be16toh(clientV4->sin_port);
+        std::string addr = inet_ntoa(clientV4->sin_addr);
+        accCb(newFd, std::make_pair(port, addr));
     }
     else {
-        auto* client_v6 = (sockaddr_in6*) &client_addr;
-        uint16_t port = be16toh(client_v6->sin6_port);
+        auto* clientV6 = (sockaddr_in6*) &clientAddr;
+        uint16_t port = be16toh(clientV6->sin6_port);
         char buff[128];
-        std::string addr = inet_ntop(AF_INET6, (const void *) &client_v6->sin6_addr, buff, (socklen_t)128);
-        accCb(new_fd, std::make_pair(port, addr));
+        std::string addr = inet_ntop(AF_INET6, reinterpret_cast<const void *>(static_cast<const in6_addr*>(&clientV6->sin6_addr)), buff, (socklen_t)128);
+        accCb(newFd, std::make_pair(port, addr));
     }
 }

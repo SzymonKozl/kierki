@@ -10,6 +10,6 @@
 
 using ParseResp = std::vector<std::pair<std::string, std::string>>;
 
-ParseResp parseNetMsg(std::string m, bool server_side);
+ParseResp parseNetMsg(std::string m, bool sererSide);
 
 #endif //KIERKI_NETWORK_MSG_PARSER_H

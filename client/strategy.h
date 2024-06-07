@@ -11,7 +11,7 @@
 class Strategy {
 public:
     Strategy(Hand hand, int mode);
-    void reset(Hand hand, int mode);
+    void reset(Hand newHand, int mode);
     Card nextMove(Table const& t);
     Hand& accHand();
 private:

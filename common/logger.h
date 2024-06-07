@@ -11,7 +11,6 @@
 #include "string"
 #include "mutex"
 
-
 class Logger {
 public:
     Logger(std::ostream& ostream, bool dummy);
@@ -22,6 +21,5 @@ private:
     std::mutex mutex;
     std::ostream &output;
 };
-
 
 #endif //KIERKI_LOGGER_H

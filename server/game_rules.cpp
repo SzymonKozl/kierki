@@ -4,7 +4,6 @@
 
 #include "game_rules.h"
 #include "../common/utils.h"
-#include "../common/common_types.h"
 #include "../common/constants.h"
 
 #include "stdexcept"
@@ -18,7 +17,7 @@ constexpr int SEVENTH_LAST_TRICK_PENALTY_VAL = 10;
 
 bool GameRules::isMoveLegal(Side &s, Card &c, table_state &state, const Table& table) {
     if (!table.empty()) {
-        color wanted = table.front().getColor();
+        Color wanted = table.front().getColor();
         if (c.getColor() != wanted) {
             for (const Card& card: state.at(s)) {
                 if (card.getColor() == wanted) return false;
@@ -33,7 +32,7 @@ bool GameRules::isMoveLegal(Side &s, Card &c, table_state &state, const Table& t
 
 std::pair<Side, int> GameRules::whoTakes(const Side &startingSide, const Table &table, RoundType roundType, int trickNo) {
     int takerIx = 0;
-    color wanted = table.front().getColor();
+    Color wanted = table.front().getColor();
     for (int i = 1; i < 4; i ++) {
         if (table[i].getColor() == wanted && table[i] > table[takerIx]) takerIx = i;
     }

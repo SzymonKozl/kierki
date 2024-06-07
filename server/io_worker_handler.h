@@ -19,17 +19,17 @@ using IOWorkerInvalidMsgCb = std::function<bool(int)>;
 class IOWorkerHandler: public IOWorker {
 public:
     IOWorkerHandler(
-            int pipe_fd,
+            int pipeFd,
             int id,
-            int sock_fd,
-            IOWorkerExitCb exit_callback,
-            IOWorkerTimeoutCb timeout_callback,
-            IOWorkerExecuteSafeCb exec_callback,
-            IOWorkerIntroCb intro_callback,
-            IOWrokerTrickCb trick_callback,
-            IOWorkerInvalidMsgCb invalid_callback,
-            const net_address& clientAddr,
-            const net_address& own_addr,
+            int sockFd,
+            IOWorkerExitCb exitCallback,
+            IOWorkerTimeoutCb timeoutCallback,
+            IOWorkerExecuteSafeCb execCallback,
+            IOWorkerIntroCb introCallback,
+            IOWrokerTrickCb trickCallback,
+            IOWorkerInvalidMsgCb invalidCallback,
+            const NetAddress& clientAddr,
+            const NetAddress& ownAddr,
             int timeout,
             Logger& logger
             );
@@ -41,6 +41,5 @@ private:
     IOWorkerInvalidMsgCb invalidCb;
     std::string nextIncoming;
 };
-
 
 #endif //KIERKI_IO_WORKER_HANDLER_H

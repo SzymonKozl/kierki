@@ -3,7 +3,6 @@
 //
 
 #include "io_worker_handler.h"
-
 #include "../common/network_msg_parser.h"
 #include "../common/constants.h"
 #include "../common/utils.h"
@@ -13,24 +12,24 @@
 #include "cerrno"
 
 IOWorkerHandler::IOWorkerHandler(
-        int pipe_fd,
+        int pipeFd,
         int id,
-        int sock_fd,
-        IOWorkerExitCb exit_callback,
-        IOWorkerTimeoutCb timeout_callback,
-        IOWorkerExecuteSafeCb exec_callback,
-        IOWorkerIntroCb intro_callback,
-        IOWrokerTrickCb trick_callback,
-        IOWorkerInvalidMsgCb invalid_callback,
-        const net_address& clientAddr,
-        const net_address& own_addr,
+        int sockFd,
+        IOWorkerExitCb exitCallback,
+        IOWorkerTimeoutCb timeoutCallback,
+        IOWorkerExecuteSafeCb execCallback,
+        IOWorkerIntroCb introCallback,
+        IOWrokerTrickCb trickCallback,
+        IOWorkerInvalidMsgCb invalidCallback,
+        const NetAddress& clientAddr,
+        const NetAddress& ownAddr,
         int timeout,
         Logger& logger
 ):
-        IOWorker(pipe_fd, id, sock_fd, std::move(exit_callback), std::move(timeout_callback), std::move(exec_callback), IO_ERR_EXTERNAL, own_addr, clientAddr, timeout, logger),
-        trickCb(std::move(trick_callback)),
-        introCb(std::move(intro_callback)),
-        invalidCb(std::move(invalid_callback))
+        IOWorker(pipeFd, id, sockFd, std::move(exitCallback), std::move(timeoutCallback), std::move(execCallback), IO_ERR_EXTERNAL, ownAddr, clientAddr, timeout, logger),
+        trickCb(std::move(trickCallback)),
+        introCb(std::move(introCallback)),
+        invalidCb(std::move(invalidCallback))
 {}
 
 void IOWorkerHandler::socketAction() {
@@ -39,7 +38,7 @@ void IOWorkerHandler::socketAction() {
     char pLoad;
     if (!closedFd) {
         while (readRes == 1 && pendingIncoming.empty()) {
-            readRes = recv(main_fd, &pLoad, 1, MSG_DONTWAIT);
+            readRes = recv(mainFd, &pLoad, 1, MSG_DONTWAIT);
             if (readRes == 1) {
                 nextIncoming += pLoad;
                 if (nextIncoming.size() > MAX_PARSE_LEN) {

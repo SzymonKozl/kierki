@@ -53,7 +53,6 @@ private:
     std::unordered_map<int, WorkerStatus> roles;
     int nextIx;
     IOWorkerMgrPipeCb pipeCb;
-
     std::binary_semaphore clearThreadsSemaphore;
     std::mutex threadsStructuresMutex;
     std::vector<int> toErase;

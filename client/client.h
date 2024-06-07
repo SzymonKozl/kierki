@@ -13,7 +13,7 @@
 
 class Client {
 public:
-    Client(Player &player, net_address connectTo, Side side, sa_family_t proto);
+    Client(Player &player, NetAddress connectTo, Side side, sa_family_t proto);
     int run();
     void chooseCard(const Card& c);
     void sendMessage(const SSendJob& job) const;
@@ -22,10 +22,10 @@ public:
 private:
     static int makeConnection(sa_family_t proto);
 
-    int tcp_sock;
+    int tcpSock;
     Player &player;
-    net_address ownAddr;
-    net_address serverAddr;
+    NetAddress ownAddr;
+    NetAddress serverAddr;
     bool waitingForCard;
     Card selectedCard;
     Side side;

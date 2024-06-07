@@ -40,4 +40,3 @@ void JobQueue::setKillOrder() noexcept {
     MutexGuard lock(mutex);
     killFlag = true;
 }
-

@@ -80,15 +80,15 @@ public:
     std::string genMsg() const override;
 private:
     const Table tableState;
-    const int trickNo;
+    const size_t trickNo;
 };
 
 class SendJobWrong: public SendJob {
 public:
-    explicit SendJobWrong(size_t trick_no);
+    explicit SendJobWrong(size_t trickNo);
     std::string genMsg() const override;
 private:
-    size_t trick_no;
+    size_t trickNo;
 };
 
 #endif //KIERKI_SENDJOB_H

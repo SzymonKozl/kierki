@@ -30,15 +30,15 @@ public:
     void scheduleDeath();
 
     IOWorker(
-            int pipe_fd,
+            int pipeFd,
             int id,
-            int sock_fd,
-            IOWorkerExitCb exit_callback,
-            IOWorkerTimeoutCb timeout_callback,
-            IOWorkerExecuteSafeCb exec_callback,
+            int sockFd,
+            IOWorkerExitCb exitCallback,
+            IOWorkerTimeoutCb timeoutCallback,
+            IOWorkerExecuteSafeCb execCallback,
             IOErrClass mainSockErr,
-            net_address ownAddr,
-            net_address clientAddr,
+            NetAddress ownAddr,
+            NetAddress clientAddr,
             int timeout,
             Logger& logger
         );
@@ -56,8 +56,8 @@ protected:
     int id;
     bool wantToToQuit;
     bool terminate;
-    const int main_fd;
-    const int pipe_fd;
+    const int mainFd;
+    const int pipeFd;
     JobQueue jobQueue;
     IOWorkerExitCb exitCb;
     IOWorkerTimeoutCb timeoutCb;
@@ -65,8 +65,8 @@ protected:
     ErrArr errs;
     IOErrClass mainSockErr;
     bool closedFd;
-    net_address ownAddr;
-    net_address clientAddr;
+    NetAddress ownAddr;
+    NetAddress clientAddr;
     std::shared_ptr<std::chrono::time_point<std::chrono::system_clock>> responseTimeout;
     int timeout;
     int nextTimeout;
@@ -74,7 +74,7 @@ protected:
     std::queue<SSendJob> pendingOutgoing;
     Logger& logger;
     bool peerCorrupted;
-    pollfd* poll_fds;
+    pollfd* pollFds;
 };
 
 using SIOWorker = std::shared_ptr<IOWorker>;

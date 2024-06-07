@@ -4,8 +4,6 @@
 
 #include "message.h"
 
-#include <utility>
-#include "common_types.h"
 #include "utils.h"
 
 #include "iostream"
@@ -14,7 +12,7 @@
 #include "iomanip"
 #include "chrono"
 
-Message::Message(net_address  sender, net_address  receiver, std::string payload):
+Message::Message(NetAddress  sender, NetAddress  receiver, std::string payload):
         registered(std::chrono::system_clock::now()),
         sender(std::move(sender)),
         receiver(std::move(receiver)),

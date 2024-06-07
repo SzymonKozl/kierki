@@ -37,5 +37,4 @@ private:
     std::vector<std::pair<Side, Table>> takenTricks;
 };
 
-
 #endif //KIERKI_PLAYER_CONSOLE_H

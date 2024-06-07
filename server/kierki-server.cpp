@@ -13,7 +13,7 @@
 namespace po = boost::program_options;
 
 int main(int argc, char* argv[]) {
-    int status = 0;
+    int status;
     {
         po::options_description desc("Allowed options");
         desc.add_options()
@@ -22,7 +22,6 @@ int main(int argc, char* argv[]) {
                 ("timeout,t", po::value<std::vector<int>>(), "listen timeout");
         po::positional_options_description posDesc;
         po::variables_map vm;
-        //po::store(po::parse_command_line(argc, argv, desc), vm);
         try {
             po::store(po::command_line_parser(argc, argv).options(desc).positional(posDesc).run(), vm);
         } catch (std::exception& e) {

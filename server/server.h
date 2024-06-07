@@ -24,11 +24,11 @@ public:
     int run();
 private:
     bool furtherMovesNeeded() noexcept;
-    bool handleSysErr(const ErrInfo& info, bool locked = false);
+    bool handleSysErr(ErrInfo info, bool locked = false);
     bool playerTricked(size_t trickNoArg, Card card, int workerIx);
     bool playerIntro(Side side, int workerIx);
     void prepareRound();
-    void forwardConnection(int fd, net_address conn_addr);
+    void forwardConnection(int fd, NetAddress connAddr);
     int makeTCPSock(uint16_t port);
     void updatePenalties();
     void clearTmpPenalties();
@@ -52,7 +52,7 @@ private:
     Table table;
     int exitCode;
     int playersConnected;
-    net_address own_addr;
+    NetAddress ownAddr;
     table_state lastDeal;
     std::vector<SSendJob> takenInRound;
     bool exiting;
@@ -61,6 +61,5 @@ private:
     std::unordered_map<int, Side> workerToSide;
     std::unordered_map<int, Side> zombieWorkerToSide;
 };
-
 
 #endif //KIERKI_SERVER_H

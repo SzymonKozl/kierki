@@ -12,7 +12,7 @@ FIND_PACKAGE(Boost COMPONENTS program_options REQUIRED)
 INCLUDE_DIRECTORIES(${Boost_INCLUDE_DIRS})
 
 
-set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -Wall -Wextra -O0")
+set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -Wall -Wextra -O2")
 
 add_executable(kierki-client client/kierki-client.cpp ${CLIENT_DEPS} ${COMMON_DEPS})
 add_executable(kierki-server server/kierki-server.cpp ${SERVER_DEPS} ${COMMON_DEPS})

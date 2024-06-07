@@ -19,6 +19,7 @@ using cardNeededCb = std::function<bool()>;
 class Player {
 public:
     explicit Player(Side side);
+    virtual ~Player() = 0;
     void setup(putCardCb putCardCallback, cardNeededCb cardNeededCallback);
     virtual void trickMsg(int trickNo, const Table& table) = 0;
     virtual void takenMsg(Side side, const Table &cards, int trickNo, bool apply) = 0;

@@ -19,8 +19,8 @@
 #include "cstring"
 #include "csignal"
 
-ssize_t sendNoBlockN(int fd, void * buff, ssize_t n) {
-    char * buff_c = (char *) buff;
+ssize_t sendNoBlockN(int fd, const void * buff, ssize_t n) {
+    char* buff_c = reinterpret_cast<char *>(const_cast<void*>(buff));
     ssize_t _written = 0;
     while (_written < n) {
         errno = 0;
@@ -53,13 +53,13 @@ sockaddrAny getIntAddr(const std::string& host, int proto, uint16_t port) {
     hints.ai_socktype = SOCK_STREAM;
     hints.ai_protocol = IPPROTO_TCP;
 
-    addrinfo* address_result;
-    int errcode = getaddrinfo(host.c_str(), nullptr, &hints, &address_result);
+    addrinfo* addressResult;
+    int errcode = getaddrinfo(host.c_str(), nullptr, &hints, &addressResult);
     if (errcode != 0) {
         throw std::runtime_error("getaddrinfo");
     }
     sockaddrAny resp{};
-    sockaddr * matching = matchingSockaddr(address_result, proto);
+    sockaddr * matching = matchingSockaddr(addressResult, proto);
     if (matching == nullptr) throw std::runtime_error("getaddrinfo - no matching family");
     proto = matching->sa_family;
     if (proto == AF_INET) {
@@ -72,41 +72,41 @@ sockaddrAny getIntAddr(const std::string& host, int proto, uint16_t port) {
     }
     resp.family = proto;
 
-    freeaddrinfo(address_result);
+    freeaddrinfo(addressResult);
 
     return resp;
 }
 
-net_address getAddrStruct(int fd, sa_family_t proto) {
-    uint16_t s_port;
-    std::string s_addr;
+NetAddress getAddrStruct(int fd, sa_family_t proto) {
+    uint16_t addrPort;
+    std::string addrHost;
     if (proto == AF_INET) {
-        sockaddr_in addr_server;
-        socklen_t socklen = sizeof addr_server;
+        sockaddr_in addrServer{};
+        socklen_t sockLen = sizeof addrServer;
 
-        if (getsockname(fd, (sockaddr *) &addr_server, &socklen)) {
+        if (getsockname(fd, (sockaddr *) &addrServer, &sockLen)) {
             throw std::runtime_error("getsockname");
         }
 
-        s_port = ntohs(addr_server.sin_port);
-        s_addr = inet_ntoa(addr_server.sin_addr);
+        addrPort = ntohs(addrServer.sin_port);
+        addrHost = inet_ntoa(addrServer.sin_addr);
     }
     else {
-        sockaddr_in6 addr_server;
-        socklen_t socklen = sizeof addr_server;
+        sockaddr_in6 addrServer{};
+        socklen_t sockLen = sizeof addrServer;
 
-        if (getsockname(fd, (sockaddr *) &addr_server, &socklen)) {
+        if (getsockname(fd, (sockaddr *) &addrServer, &sockLen)) {
             throw std::runtime_error("getsockname");
         }
 
-        s_port = ntohs(addr_server.sin6_port);
+        addrPort = ntohs(addrServer.sin6_port);
         char buff[128];
-        s_addr = inet_ntop(AF_INET6, &addr_server.sin6_addr, buff, 128);
+        addrHost = inet_ntop(AF_INET6, &addrServer.sin6_addr, buff, 128);
     }
-    return std::make_pair(s_port, std::string(s_addr));
+    return std::make_pair(addrPort, std::string(addrHost));
 }
 
-std::string formatAddr(const net_address& addr) {
+std::string formatAddr(const NetAddress& addr) {
     std::string res(addr.second);
     return res + ":" + std::to_string(addr.first);
 }
@@ -126,8 +126,8 @@ game_scenario parseScenario(const std::string& filePath) {
     while (ix < lines.size()) {
         line = lines[ix ++];
         state.clear();
-        type = (RoundType) (line.at(0) - '1' + 1);
-        s = (Side) line.at(1);
+        type = static_cast<RoundType>(line.at(0) - '1' + 1);
+        s = static_cast<Side>(line.at(1));
         for (Side s_: sides_) {
             state[s_] = Hand();
             int iter = 0;
@@ -163,11 +163,11 @@ Side nxtSide(const Side &s) {
 }
 
 void ignoreBrokenPipe() {
-    struct sigaction new_action;
-    sigemptyset(&new_action.sa_mask);
-    new_action.sa_flags = 0;
-    new_action.sa_handler = SIG_IGN;
-    sigaction(SIGPIPE, &new_action, nullptr);
+    struct sigaction newAction{};
+    sigemptyset(&newAction.sa_mask);
+    newAction.sa_flags = 0;
+    newAction.sa_handler = SIG_IGN;
+    sigaction(SIGPIPE, &newAction, nullptr);
 }
 
 void setTimeout(int fd, time_t seconds) {

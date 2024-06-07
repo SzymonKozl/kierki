@@ -13,38 +13,38 @@
 #include "fcntl.h"
 
 IOWorker::IOWorker(
-        int pipe_fd,
+        int pipeFd,
         int id,
-        int sock_fd,
-        IOWorkerExitCb exit_callback,
-        IOWorkerTimeoutCb  timeoutCb,
-        IOWorkerExecuteSafeCb exec_callback,
+        int sockFd,
+        IOWorkerExitCb exitCallback,
+        IOWorkerTimeoutCb  timeoutCallback,
+        IOWorkerExecuteSafeCb execCallback,
         IOErrClass mainSockErr,
-        net_address  ownAddr,
-        net_address  clientAddr,
+        NetAddress  ownAddr,
+        NetAddress  clientAddr,
         int timeout,
         Logger& logger
         ) :
-    id(id),
-    wantToToQuit(false),
-    terminate(false),
-    main_fd(sock_fd),
-    pipe_fd(pipe_fd),
-    jobQueue(),
-    exitCb(std::move(exit_callback)),
-    timeoutCb(std::move(timeoutCb)),
-    execCb(std::move(exec_callback)),
-    errs(),
-    mainSockErr(mainSockErr),
-    closedFd(false),
-    ownAddr(std::move(ownAddr)),
-    clientAddr(std::move(clientAddr)),
-    responseTimeout(std::make_shared<decltype(responseTimeout)::element_type>(std::chrono::system_clock::now() + std::chrono::seconds(timeout))),
-    timeout(timeout),
-    nextTimeout(-1),
-    logger(logger),
-    peerCorrupted(false),
-    poll_fds(nullptr)
+        id(id),
+        wantToToQuit(false),
+        terminate(false),
+        mainFd(sockFd),
+        pipeFd(pipeFd),
+        jobQueue(),
+        exitCb(std::move(exitCallback)),
+        timeoutCb(std::move(timeoutCallback)),
+        execCb(std::move(execCallback)),
+        errs(),
+        mainSockErr(mainSockErr),
+        closedFd(false),
+        ownAddr(std::move(ownAddr)),
+        clientAddr(std::move(clientAddr)),
+        responseTimeout(std::make_shared<decltype(responseTimeout)::element_type>(std::chrono::system_clock::now() + std::chrono::seconds(timeout))),
+        timeout(timeout),
+        nextTimeout(-1),
+        logger(logger),
+        peerCorrupted(false),
+        pollFds(nullptr)
 {
 }
 
@@ -57,32 +57,32 @@ void IOWorker::scheduleDeath() {
 }
 
 void IOWorker::run() {
-    poll_fds = new pollfd[2];
-    poll_fds[0].fd = main_fd;
-    poll_fds[0].events = POLLIN;
-    poll_fds[1].fd = pipe_fd;
-    poll_fds[1].events = POLLIN;
+    pollFds = new pollfd[2];
+    pollFds[0].fd = mainFd;
+    pollFds[0].events = POLLIN;
+    pollFds[1].fd = pipeFd;
+    pollFds[1].events = POLLIN;
 
-    if (fcntl(pipe_fd, F_SETFL, fcntl(pipe_fd, F_GETFL) | O_NONBLOCK)) {
+    if (fcntl(pipeFd, F_SETFL, fcntl(pipeFd, F_GETFL) | O_NONBLOCK)) {
         errs.emplace_back("fcntl", errno, mainSockErr);
         terminate = true;
         
     }
-    if (fcntl(main_fd, F_SETFL, fcntl(main_fd, F_GETFL) | O_NONBLOCK)) {
+    if (fcntl(mainFd, F_SETFL, fcntl(mainFd, F_GETFL) | O_NONBLOCK)) {
         errs.emplace_back("fcntl", errno, mainSockErr);
         terminate = true;
     }
 
     while (!terminate) {
-        poll_fds[0].revents = 0;
-        poll_fds[1].revents = 0;
+        pollFds[0].revents = 0;
+        pollFds[1].revents = 0;
 
         // preventing active waiting
-        if (!pendingIncoming.empty()) poll_fds[0].fd *= -1;
+        if (!pendingIncoming.empty()) pollFds[0].fd *= -1;
 
-        int pollResp = poll(poll_fds, 2, nextTimeout);
+        int pollResp = poll(pollFds, 2, nextTimeout);
 
-        if (!pendingIncoming.empty()) poll_fds[0].fd *= -1;
+        if (!pendingIncoming.empty()) pollFds[0].fd *= -1;
 
         nextTimeout = -1;
         if (pollResp == 0) {
@@ -140,20 +140,20 @@ void IOWorker::run() {
 }
 
 IOWorker::~IOWorker() {
+    delete[] pollFds;
+    pollFds = nullptr;
     if (!closedFd) {
-        if (close(main_fd)) std::cerr << "error on close: " << errno << std:: endl << std::flush;
+        if (close(mainFd)) std::cerr << "error on close: " << errno << std:: endl << std::flush;
     }
-    delete[] poll_fds;
-    poll_fds = nullptr;
 }
 
 void IOWorker::handlePipe() {
-    ssize_t read_len;
+    ssize_t readLen;
     char msg;
     do {
-        read_len = read(pipe_fd, &msg, 1);
-    } while (read_len > 0);
-    if (read_len < 0) {
+        readLen = read(pipeFd, &msg, 1);
+    } while (readLen > 0);
+    if (readLen < 0) {
         if (errno != EAGAIN && errno != EWOULDBLOCK) {
             errs.emplace_back("read", errno, IO_ERR_INTERNAL);
             terminate = true;
@@ -169,8 +169,8 @@ void IOWorker::handleQueue() {
             pendingOutgoing.pop();
             std::string msg = job->genMsg();
             errno = 0;
-            ssize_t send_resp = sendNoBlockN(main_fd, (void *) msg.c_str(), static_cast<ssize_t>(msg.size()));
-            if (send_resp != (ssize_t)msg.size()) {
+            ssize_t sendResp = sendNoBlockN(mainFd, (void *) msg.c_str(), static_cast<ssize_t>(msg.size()));
+            if (sendResp != static_cast<ssize_t>(msg.size())) {
                 this->errs.emplace_back("send", errno, mainSockErr);
                 closeConn();
                 this->terminate = true;
@@ -197,13 +197,13 @@ bool IOWorker::hasWork() {
 
 void IOWorker::closeConn() {
     if (!closedFd) {
-        if (close(main_fd)) {
+        if (close(mainFd)) {
             errs.emplace_back("close", errno, mainSockErr);
         }
         closedFd = true;
     }
     wantToToQuit = true;
-    if (poll_fds) {
-        poll_fds[0].fd = -1;
+    if (pollFds) {
+        pollFds[0].fd = -1;
     }
 }

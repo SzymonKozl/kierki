@@ -19,7 +19,7 @@ SendJobBusy::SendJobBusy(const std::vector<Side> &taken):
 
 std::string SendJobBusy::genMsg() const {
     std::string res = msgPrefix;
-    for (Side s: taken) res += (char) s;
+    for (Side s: taken) res += static_cast<char>(s);
     return res + "\r\n";
 }
 
@@ -41,9 +41,9 @@ SendJobScore::SendJobScore(const std::unordered_map<Side, int>& scores):
 
 std::string SendJobScore::genMsg() const {
     std::string res = msgPrefix;
-    for (auto itr = scores.begin(); itr != scores.end(); itr ++) {
-        res += static_cast<char>(itr->first);
-        res += std::to_string(itr->second);
+    for (auto score : scores) {
+        res += static_cast<char>(score.first);
+        res += std::to_string(score.second);
     }
     return res + "\r\n";
 }
@@ -60,7 +60,7 @@ std::string SendJobTaken::genMsg() const {
     for (const Card& c: table) {
         res += c.toString();
     }
-    res += (char) s;
+    res += static_cast<char>(s);
     return res + "\r\n";
 }
 
@@ -72,7 +72,7 @@ SendJobTotal::SendJobTotal(const std::unordered_map<Side, int>& scores):
 std::string SendJobTotal::genMsg() const {
     std::string res = msgPrefix;
     for (auto score : scores) {
-        res += (char) score.first;
+        res += static_cast<char>(score.first);
         res += std::to_string(score.second);
     }
     return res + "\r\n";
@@ -92,13 +92,13 @@ std::string SendJobTrick::genMsg() const {
     return res + "\r\n";
 }
 
-SendJobWrong::SendJobWrong(size_t trick_no):
+SendJobWrong::SendJobWrong(size_t trickNo):
         SendJob("WRONG"),
-        trick_no(trick_no)
+        trickNo(trickNo)
 {}
 
 std::string SendJobWrong::genMsg() const {
-    return msgPrefix + std::to_string(trick_no) + "\r\n";
+    return msgPrefix + std::to_string(trickNo) + "\r\n";
 }
 
 SendDealJob::SendDealJob(RoundType roundType, Side starting, Hand cards):
@@ -110,7 +110,7 @@ SendDealJob::SendDealJob(RoundType roundType, Side starting, Hand cards):
 
 std::string SendDealJob::genMsg() const {
     std::string res = msgPrefix + std::to_string(roundType);
-    res += (char) starting;
+    res += static_cast<char>(starting);
     for (const Card& c: cards) res += c.toString();
     return res + "\r\n";
 }

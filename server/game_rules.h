@@ -17,5 +17,4 @@ public:
     static std::pair<Side, int> whoTakes(Side const& startingSide, Table const& table, RoundType roundType, int trickNo);
 };
 
-
 #endif //KIERKI_GAMERULES_H

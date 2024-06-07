@@ -4,10 +4,11 @@
 
 #include "logger.h"
 #include "message.h"
-#include "constants.h"
+#include "common_types.h"
 
 #include "mutex"
 #include "iostream"
+#include "string"
 
 Logger::Logger(std::ostream &ostream, bool dummy):
     dummy(dummy),

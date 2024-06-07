@@ -23,7 +23,7 @@ const std::unordered_map<std::string, int> VALUES {
         {"A", 14}
 };
 
-Card::Card(const std::string& value, color col):
+Card::Card(const std::string& value, Color col):
     value(value),
     col(col),
     true_val(VALUES.at(value))
@@ -31,10 +31,10 @@ Card::Card(const std::string& value, color col):
 
 std::string Card::toString() const {
     std::string res(value);
-    return res + (char) col;
+    return res + static_cast<char>(col);
 }
 
-color Card::getColor() const noexcept {
+Color Card::getColor() const noexcept {
     return col;
 }
 
@@ -44,13 +44,9 @@ std::string Card::getValue() const {
 }
 
 Card Card::fromString(const std::string &s) {
-    auto col = (color) s.at(s.size() - 1);
+    auto col = (Color) s.at(s.size() - 1);
     std::string val = s.substr(0, s.size() - 1);
     return {val, col};
-}
-
-bool Card::isValueOk(const std::string& v) {
-    return VALUES.contains(v);
 }
 
 bool Card::operator==(const Card &other) const {
@@ -78,5 +74,5 @@ bool Card::operator>=(const Card &other) const {
 }
 
 std::ostream &operator<<(std::ostream &stream, const Card &card) {
-    return stream << card.getValue() << (char) card.getColor();
+    return stream << card.getValue() << static_cast<char>(card.getColor());
 }

@@ -11,20 +11,19 @@
 
 #include "functional"
 
-
-using IOWorkerConnectionMadeCb = std::function<void(int, net_address)>;
+using IOWorkerConnectionMadeCb = std::function<void(int, NetAddress)>;
 
 class IOWorkerConnect: public IOWorker {
 public:
     IOWorkerConnect(
-            int pipe_fd,
+            int pipeFd,
             int id,
-            int sock_fd,
-            IOWorkerExitCb exit_callback,
-            IOWorkerTimeoutCb timeout_callback,
-            IOWorkerExecuteSafeCb exec_callback,
-            IOWorkerConnectionMadeCb accept_callback,
-            const net_address &ownAddr,
+            int sockFd,
+            IOWorkerExitCb exitCallback,
+            IOWorkerTimeoutCb timeoutCallback,
+            IOWorkerExecuteSafeCb execCallback,
+            IOWorkerConnectionMadeCb acceptCallback,
+            const NetAddress &ownAddr,
             Logger& logger
             );
 private:
@@ -32,6 +31,5 @@ private:
 
     IOWorkerConnectionMadeCb accCb;
 };
-
 
 #endif //KIERKI_IO_WORKER_CONNECT_H

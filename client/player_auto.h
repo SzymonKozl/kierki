@@ -35,5 +35,4 @@ private:
     Logger logger;
 };
 
-
 #endif //KIERKI_CLIENT_AUTO_H

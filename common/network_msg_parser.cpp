@@ -29,12 +29,12 @@ constexpr std::string_view patterns[] = {
 
 constexpr int PATTERN_NO = 9;
 
-ParseResp parseNetMsg(std::string m, bool server_side) {
+ParseResp parseNetMsg(std::string m, bool sererSide) {
     std::regex reg;
     std::smatch match;
     ParseResp res;
     for (int i = 0; i < PATTERN_NO; i ++) {
-        if (server_side) {
+        if (sererSide) {
             if ((i != 0) && (i != 4)) continue;
         }
         else {

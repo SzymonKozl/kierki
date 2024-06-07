@@ -66,5 +66,6 @@ using Table = std::vector<Card>;
 using table_state = std::unordered_map<Side, Hand>;
 using score_map = std::unordered_map<Side, int>;
 using game_scenario = std::vector<std::tuple<RoundType, table_state, Side>>;
-using net_address = std::pair<uint16_t, std::string>;
+using NetAddress = std::pair<uint16_t, std::string>;
+
 #endif //KIERKI_COMMON_TYPES_H

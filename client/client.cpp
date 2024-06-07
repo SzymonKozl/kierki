@@ -37,38 +37,37 @@ int Client::run() {
 
     sockaddrAny addr = getIntAddr(serverAddr.second, proto, htons(serverAddr.first));
     socklen_t len = (addr.family == AF_INET) ? sizeof(sockaddr_in) : sizeof(sockaddr_in6);
-
     proto = addr.family;
 
-    tcp_sock = makeConnection(proto);
+    tcpSock = makeConnection(proto);
     openSock = true;
 
-    ownAddr = getAddrStruct(tcp_sock, proto);
+    ownAddr = getAddrStruct(tcpSock, proto);
 
-    if (connect(tcp_sock, (const sockaddr *)(&addr.addr), len)) {
+    if (connect(tcpSock, reinterpret_cast<sockaddr *>(&addr.addr), len)) {
         throw std::runtime_error("connect");
     }
 
     SSendJob msgIam = std::static_pointer_cast<SendJob>(std::make_shared<SendJobIntro>(side));
     sendMessage(msgIam);
-    pollfd poll_fds[] {
-            {tcp_sock, POLLIN, 0},
-            {0, POLLIN, 0}
+    pollfd pollFds[] {
+            {tcpSock, POLLIN, 0},
+            {0,       POLLIN, 0}
     };
 
     bool terminate = false;
     while (!terminate) {
-        poll_fds[0].revents = 0;
-        poll_fds[1].revents = 0;
-        int poll_status = poll(poll_fds, 2, -1);
+        pollFds[0].revents = 0;
+        pollFds[1].revents = 0;
+        int poll_status = poll(pollFds, 2, -1);
         if (poll_status < 0) {
             throw std::runtime_error("poll");
         }
         else {
-            if (poll_fds[1].revents & (POLLERR | POLLHUP | POLLNVAL)) {
+            if (pollFds[1].revents & (POLLERR | POLLHUP | POLLNVAL)) {
                 throw std::runtime_error("poll on stdin");
             }
-            else if (poll_fds[1].revents & POLLIN) {
+            else if (pollFds[1].revents & POLLIN) {
                 char c;
                 ssize_t r;
                 while ((r = read(0, &c, 1)) == 1) {
@@ -84,14 +83,14 @@ int Client::run() {
                     }
                 }
             }
-            else if (poll_fds[0].revents & (POLLERR | POLLHUP | POLLNVAL)) {
+            else if (pollFds[0].revents & (POLLERR | POLLHUP | POLLNVAL)) {
                 throw std::runtime_error("poll on tcp sock");
             }
-            else if (poll_fds[0].revents & POLLIN) {
+            else if (pollFds[0].revents & POLLIN) {
                 char c;
                 ssize_t r;
                 std::string msg;
-                while ((r = recv(tcp_sock, &c, 1, MSG_DONTWAIT)) == 1) {
+                while ((r = recv(tcpSock, &c, 1, MSG_DONTWAIT)) == 1) {
                     nextMsg += c;
                     if (c == '\n') { // new msg
                         msg = nextMsg.substr(0, nextMsg.size() - 2);
@@ -99,53 +98,53 @@ int Client::run() {
 
                         Message msgObj(serverAddr, ownAddr, msg);
                         player.anyMsg(msgObj);
-                        ParseResp msg_array = parseNetMsg(msg, false);
-                        if (msg_array[0].second == "DEAL") {
+                        ParseResp msgArray = parseNetMsg(msg, false);
+                        if (msgArray[0].second == "DEAL") {
                             stage = (stage == PRE) ? AFTER_FIRST_DEAL : AFTER_DEAL;
-                            auto type = (RoundType) (msg_array[1].second.at(0) - '0');
+                            auto type = static_cast<RoundType>(msgArray[1].second.at(0) - '0');
                             Hand hand;
-                            for (int i = 3; i < 16; i ++) hand.push_back(Card::fromString(msg_array[i].second));
-                            Side starting = (Side) msg_array[2].second.at(0);
+                            for (int i = 3; i < 16; i ++) hand.push_back(Card::fromString(msgArray[i].second));
+                            Side starting = static_cast<Side>(msgArray[2].second.at(0));
                             player.dealMsg(type, hand, starting);
                         }
-                        else if (msg_array[0].second == "TRICK_S") {
+                        else if (msgArray[0].second == "TRICK_S") {
                             stage = AFTER_TRICK;
                             waitingForCard = true;
-                            trickNo = atoi(msg_array[1].second.c_str());
+                            trickNo = atoi(msgArray[1].second.c_str());
                             Table  t;
-                            for (size_t i = 2; i < msg_array.size(); i ++) {
-                                t.push_back(Card::fromString(msg_array[i].second));
+                            for (size_t i = 2; i < msgArray.size(); i ++) {
+                                t.push_back(Card::fromString(msgArray[i].second));
                             }
                             player.trickMsg(trickNo, t);
                         }
-                        else if (msg_array[0].second == "TAKEN") {
-                            trickNo = atoi(msg_array[1].second.c_str());
-                            Side s = (Side) msg_array[msg_array.size() - 1].second.at(0);
+                        else if (msgArray[0].second == "TAKEN") {
+                            trickNo = atoi(msgArray[1].second.c_str());
+                            Side s = (Side) msgArray[msgArray.size() - 1].second.at(0);
                             Table t;
-                            for (int i = 2 ; i < 6; i++) t.push_back(Card::fromString(msg_array[i].second));
+                            for (int i = 2 ; i < 6; i++) t.push_back(Card::fromString(msgArray[i].second));
                             player.takenMsg(s, t, trickNo, stage == AFTER_FIRST_DEAL);
                         }
-                        else if (msg_array[0].second == "SCORE" || msg_array[0].second == "TOTAL") {
-                            if (msg_array[0].second == "SCORE" ) stage = AFTER_SCORE;
+                        else if (msgArray[0].second == "SCORE" || msgArray[0].second == "TOTAL") {
+                            if (msgArray[0].second == "SCORE" ) stage = AFTER_SCORE;
                             else stage = AFTER_TOTAL;
-                            bool total = msg_array[0].second == "TOTAL";
+                            bool total = msgArray[0].second == "TOTAL";
                             score_map res;
                             for (int i = 1; i <= 4; i ++) {
-                                Side s = (Side) msg_array[2 * i - 1].second.at(0);
-                                int score = atoi(msg_array[2 * i].second.c_str());
+                                Side s = (Side) msgArray[2 * i - 1].second.at(0);
+                                int score = atoi(msgArray[2 * i].second.c_str());
                                 res[s] = score;
                             }
                             player.scoreMsg(res, total);
                         }
-                        else if (msg_array[0].second == "WRONG") {
-                            trickNo = atoi(msg_array[1].second.c_str());
+                        else if (msgArray[0].second == "WRONG") {
+                            trickNo = atoi(msgArray[1].second.c_str());
                             waitingForCard = true;
                             player.wrongMsg(trickNo);
                         }
-                        else if (msg_array[0].second == "BUSY") {
+                        else if (msgArray[0].second == "BUSY") {
                             std::vector<Side> taken;
-                            for (size_t j = 1; j < msg_array.size(); j ++) {
-                                taken.push_back((Side) msg_array[j].second.at(0));
+                            for (size_t j = 1; j < msgArray.size(); j ++) {
+                                taken.push_back((Side) msgArray[j].second.at(0));
                             }
                             player.busyMsg(taken);
                             exitFlag = 1;
@@ -166,7 +165,7 @@ int Client::run() {
             }
         }
     }
-    close(tcp_sock);
+    close(tcpSock);
     openSock = false;
     return exitFlag;
 }
@@ -175,17 +174,17 @@ int Client::makeConnection(sa_family_t proto) {
     int fd = socket(proto, SOCK_STREAM, 0);
     if (fd < 0) throw std::runtime_error("socket");
     if (proto == AF_INET6) {
-        sockaddr_in6 server_address{};
-        server_address.sin6_family = AF_INET6;
-        server_address.sin6_addr = in6addr_any;
-        server_address.sin6_port = htons(0);
-        if (bind(fd,(const sockaddr *) &server_address, sizeof server_address)) {
+        sockaddr_in6 serverAddr{};
+        serverAddr.sin6_family = AF_INET6;
+        serverAddr.sin6_addr = in6addr_any;
+        serverAddr.sin6_port = htons(0);
+        if (bind(fd, (const sockaddr *) &serverAddr, sizeof serverAddr)) {
             throw std::runtime_error("bind");
         }
     }
     else {
-        sockaddr_in server_address{AF_INET, htons(0), {INADDR_ANY}, {}};
-        if (bind(fd,(const sockaddr *) &server_address, sizeof server_address)) {
+        sockaddr_in serverAddr{AF_INET, htons(0), {INADDR_ANY}, {}};
+        if (bind(fd, (const sockaddr *) &serverAddr, sizeof serverAddr)) {
             throw std::runtime_error("bind");
         }
     }
@@ -203,8 +202,8 @@ void Client::chooseCard(const Card& c) {
     }
 }
 
-Client::Client(Player &player, net_address connectTo, Side side, sa_family_t proto):
-        tcp_sock(-1),
+Client::Client(Player &player, NetAddress connectTo, Side side, sa_family_t proto):
+        tcpSock(-1),
         player(player),
         ownAddr(),
         serverAddr(std::move(connectTo)),
@@ -213,12 +212,13 @@ Client::Client(Player &player, net_address connectTo, Side side, sa_family_t pro
         side(side),
         trickNo(1),
         proto(proto),
-        exitFlag(0)
+        exitFlag(0),
+        openSock(false)
 {}
 
 void Client::sendMessage(const SSendJob& job) const {
     std::string msg = job->genMsg();
-    if (sendNoBlockN(tcp_sock, (void *) msg.c_str(), static_cast<ssize_t>(msg.size())) < static_cast<ssize_t>(msg.size())) {
+    if (sendNoBlockN(tcpSock, reinterpret_cast<const void *>(msg.c_str()), static_cast<ssize_t>(msg.size())) < static_cast<ssize_t>(msg.size())) {
         throw std::runtime_error("send");
     }
     player.anyMsg(Message(ownAddr, serverAddr, msg.substr(0, msg.size() - 2)));
@@ -230,7 +230,7 @@ bool Client::isWaitingForCard() const noexcept {
 
 void Client::cleanup() const {
     if (openSock) {
-        if (close(tcp_sock)) {
+        if (close(tcpSock)) {
             throw std::runtime_error("close");
         }
     }

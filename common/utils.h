@@ -17,15 +17,15 @@
 // but for some reason are present (ex. to prevent compilation warnings)
 #define ASSERT_UNREACHABLE assert((false && "this code should be unreachable"))
 
-ssize_t sendNoBlockN(int fd, void * buff, ssize_t n);
+ssize_t sendNoBlockN(int fd, const void * buff, ssize_t n);
 
-std::string formatAddr(const net_address& addr);
+std::string formatAddr(const NetAddress& addr);
 
 Side nxtSide(const Side& s);
 
 sockaddrAny getIntAddr(const std::string& host, int proto, uint16_t port);
 
-net_address getAddrStruct(int fd, sa_family_t proto);
+NetAddress getAddrStruct(int fd, sa_family_t proto);
 
 game_scenario parseScenario(const std::string& filePath);
 

@@ -22,27 +22,27 @@
 #include "arpa/inet.h"
 
 Server::Server(game_scenario &&scenario, uint16_t port, int timeout):
-    gameScenario(scenario),
-    workerMgr([this](ErrInfo info) { this->handleSysErr(info);}),
-    activeSides(),
-    penalties(),
-    hands(),
-    nextMove(W),
-    roundNumber(0),
-    trickNo(1),
-    roundMode(TRICK_PENALTY),
-    gameStateMutex(),
-    table(),
-    exitCode(0),
-    playersConnected(0),
-    own_addr(port, ""),
-    lastDeal(),
-    takenInRound(),
-    exiting(false),
-    timeout(timeout),
-    msgLogger(std::cout, false),
-    workerToSide(),
-    zombieWorkerToSide()
+        gameScenario(scenario),
+        workerMgr([this](ErrInfo info) { this->handleSysErr(std::move(info));}),
+        activeSides(),
+        penalties(),
+        hands(),
+        nextMove(W),
+        roundNumber(0),
+        trickNo(1),
+        roundMode(TRICK_PENALTY),
+        gameStateMutex(),
+        table(),
+        exitCode(0),
+        playersConnected(0),
+        ownAddr(port, ""),
+        lastDeal(),
+        takenInRound(),
+        exiting(false),
+        timeout(timeout),
+        msgLogger(std::cout, false),
+        workerToSide(),
+        zombieWorkerToSide()
 {
     for (Side s: {W, E, S, N}) {
         activeSides[s] = -1;
@@ -53,16 +53,16 @@ Server::Server(game_scenario &&scenario, uint16_t port, int timeout):
 
 int Server::run() {
     prepareRound();
-    int tcp_listen_sock = makeTCPSock(own_addr.first);
+    int tcpListenSock = makeTCPSock(ownAddr.first);
     workerMgr.spawnNewWorker<IOWorkerConnect>(
-        SERVING_PROXY,
-        tcp_listen_sock,
-        [this](ErrArr arr, int ix, bool hasWork) { return this->grandExitCallback(std::move(arr), ix, hasWork);},
-        [this](int ix) {this->handleTimeout(ix);},
-        [this](std::function<void()> inv) {return this->execMutexed(std::move(inv));},
-        [this](int fd, net_address conn_addr) { this->forwardConnection(fd, std::move(conn_addr));},
-        own_addr,
-        std::ref(msgLogger)
+            SERVING_PROXY,
+            tcpListenSock,
+            [this](ErrArr arr, int ix, bool hasWork) { return this->grandExitCallback(std::move(arr), ix, hasWork);},
+            [this](int ix) {this->handleTimeout(ix);},
+            [this](std::function<void()> inv) {return this->execMutexed(std::move(inv));},
+            [this](int fd, NetAddress connAddr) { this->forwardConnection(fd, std::move(connAddr));},
+            ownAddr,
+            std::ref(msgLogger)
     );
     workerMgr.waitForClearing();
     return exitCode;
@@ -117,7 +117,7 @@ bool Server::furtherMovesNeeded() noexcept {
     }
 }
 
-bool Server::handleSysErr(const ErrInfo& info, bool locked) {
+bool Server::handleSysErr(ErrInfo info, bool locked) {
     msgLogger.logSysErr(info);
     if (locked) {
         if (info.errType == IO_ERR_INTERNAL) {
@@ -147,9 +147,9 @@ void Server::clearTmpPenalties() {
 }
 
 void Server::prepareRound() {
-    auto [mode, init_state, starting] = gameScenario[roundNumber];
+    auto [mode, initState, starting] = gameScenario[roundNumber];
     roundMode = mode;
-    hands = init_state;
+    hands = initState;
     nextMove = starting;
     trickNo = 1;
     takenInRound.clear();
@@ -295,14 +295,14 @@ int Server::makeTCPSock(uint16_t port) {
     if (fd < 0) {
         throw std::runtime_error("socket");
     }
-    sockaddr_in6 server_address{};
-    server_address.sin6_family = AF_INET6;
-    server_address.sin6_addr = in6addr_any;
-    server_address.sin6_port = htons(port);
-    if (bind(fd,(const sockaddr *) &server_address, sizeof server_address)) {
+    sockaddr_in6 serverAddress{};
+    serverAddress.sin6_family = AF_INET6;
+    serverAddress.sin6_addr = in6addr_any;
+    serverAddress.sin6_port = htons(port);
+    if (bind(fd, (const sockaddr *) &serverAddress, sizeof serverAddress)) {
         throw std::runtime_error("bind");
     }
-    own_addr = getAddrStruct(fd, AF_INET6);
+    ownAddr = getAddrStruct(fd, AF_INET6);
 
     if (listen(fd, TCP_QUEUE)) {
         throw std::runtime_error("listen");
@@ -311,7 +311,7 @@ int Server::makeTCPSock(uint16_t port) {
     return fd;
 }
 
-void Server::forwardConnection(int fd, net_address conn_addr) {
+void Server::forwardConnection(int fd, NetAddress connAddr) {
     MutexGuard lock(gameStateMutex);
     setTimeout(fd, timeout);
     workerMgr.spawnNewWorker<IOWorkerHandler>(
@@ -323,8 +323,8 @@ void Server::forwardConnection(int fd, net_address conn_addr) {
             [this] (Side s, int ix) { return this->playerIntro(s, ix);},
             [this] (int t, const Card& c, int ix) { return this->playerTricked(t, c, ix);},
             [this] (int ix) {return this->handleWrongMessage(ix);},
-            std::move(conn_addr),
-            own_addr,
+            std::move(connAddr),
+            ownAddr,
             timeout,
             std::ref(msgLogger)
             );
