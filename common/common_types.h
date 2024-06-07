@@ -14,7 +14,7 @@
 #include "mutex"
 #include "arpa/inet.h"
 
-struct sockaddr_any {
+struct sockaddrAny {
 private:
     union addr_any_u {
         sockaddr_in *addr_in;

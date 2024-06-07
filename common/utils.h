@@ -23,7 +23,7 @@ std::string formatAddr(const net_address& addr);
 
 Side nxtSide(const Side& s);
 
-sockaddr_any getIntAddr(const std::string& host, int proto, uint16_t port);
+sockaddrAny getIntAddr(const std::string& host, int proto, uint16_t port);
 
 net_address getAddrStruct(int fd, sa_family_t proto);
 

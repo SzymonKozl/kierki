@@ -295,7 +295,7 @@ int Server::makeTCPSock(uint16_t port) {
     if (fd < 0) {
         throw std::runtime_error("socket");
     }
-    sockaddr_in6 server_address;
+    sockaddr_in6 server_address{};
     server_address.sin6_family = AF_INET6;
     server_address.sin6_addr = in6addr_any;
     server_address.sin6_port = htons(port);
