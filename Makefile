@@ -38,4 +38,9 @@ kierki-client: kierki-client.o $(CLIENT_OBJS)
 
 # Clean
 clean:
-	rm -f $(CLIENT_OBJS) $(SERVER_OBJS) kierki-server.o kierki-client.o $(TARGETS)
+	rm -f $(CLIENT_OBJS) $(SERVER_OBJS) kierki-server.o kierki-client.o $(TARGETS) sk448304.tgz sk448304.tar
+
+pack:
+	tar -cf sk448304.tar ./common ./server ./client kierki-server.cpp kierki-client.cpp Makefile
+	gzip sk448304.tar -S .tgz -c > sk448304.tgz
+	rm sk448304.tar

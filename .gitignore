@@ -3,3 +3,5 @@ cmake-build-debug/*
 **/*.o
 kierki-server
 kierki-client
+sk448304.tgz
+sk448304.tar
