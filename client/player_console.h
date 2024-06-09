@@ -11,9 +11,11 @@
 #include "vector"
 #include "string"
 
-class PlayerConsole: public Player {
+class PlayerConsole: public Player{
 public:
     explicit PlayerConsole(Side side);
+
+    ~PlayerConsole() override = default;
 
     void trickMsg(int trickNo, const Table &table) override;
 

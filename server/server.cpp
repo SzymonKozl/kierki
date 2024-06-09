@@ -197,7 +197,7 @@ bool Server::playerTricked(size_t trickNoArg, Card card, int workerIx) {
                 std::make_shared<SendJobWrong>(trickNo)), activeSides[side]);
         return true;
     }
-    else if (!GameRules::isMoveLegal(side, card, hands, table)){
+    else if (!GameRules::isMoveLegal(side, card, hands, table)) {
         workerMgr.sendJob(std::static_pointer_cast<SendJob>(
                 std::make_shared<SendJobWrong>(trickNo)), activeSides[side]);
         return true;

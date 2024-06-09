@@ -19,7 +19,7 @@ using cardNeededCb = std::function<bool()>;
 class Player {
 public:
     explicit Player(Side side);
-    virtual ~Player() = 0;
+    virtual ~Player() = default;
 
     void setup(putCardCb putCardCallback, cardNeededCb cardNeededCallback);
 

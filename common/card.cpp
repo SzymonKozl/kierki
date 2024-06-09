@@ -6,6 +6,7 @@
 
 #include "unordered_map"
 #include "string"
+#include "iostream"
 
 const std::unordered_map<std::string, int> VALUES {
         {"2", 2},

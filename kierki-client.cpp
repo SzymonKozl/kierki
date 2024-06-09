@@ -3,10 +3,10 @@
 //
 
 
-#include "../common/utils.h"
-#include "player_auto.h"
-#include "client.h"
-#include "player_console.h"
+#include "common/utils.h"
+#include "client/player_auto.h"
+#include "client/client.h"
+#include "client/player_console.h"
 
 #include "iostream"
 #include "cstdint"

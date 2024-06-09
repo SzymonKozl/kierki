@@ -17,6 +17,8 @@
 
 class PlayerAuto: public Player {
 public:
+    ~PlayerAuto() override = default;
+
     explicit PlayerAuto(Side side);
 
     void trickMsg(int trickNo, const Table& table) override;

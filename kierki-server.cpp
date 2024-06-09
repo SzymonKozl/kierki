@@ -2,8 +2,8 @@
 // Created by szymon on 15.05.24.
 //
 
-#include "server.h"
-#include "../common/utils.h"
+#include "server/server.h"
+#include "common/utils.h"
 
 #include "vector"
 #include "string"

@@ -62,7 +62,7 @@ ParseResp parseNetMsg(std::string m, bool sererSide) {
                     res.emplace_back("round_mode", m.substr(4, 1));
                     res.emplace_back("side", m.substr(5, 1));
                     itr = 6;
-                    for (int j = 0; j < TRICKS_PER_ROUND; j ++){
+                    for (int j = 0; j < TRICKS_PER_ROUND; j ++) {
                         std::string card;
                         if (m.at(itr) == '1') {
                             card = m.substr(itr, 3);
